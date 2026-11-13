@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Analog Finder</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header>
+    <h1>Analog Finder</h1>
+    <p class="sub">Pick a spot on Earth to see where the Moon and Mars have similar surface temperatures.</p>
+  </header>
+
+  <p class="notice">
+    Earth temperatures are live from NASA POWER (2001–2025 climatology, ground-surface temperature).
+    Moon and Mars temperatures are a <strong>simplified model</strong> for this prototype
+    (latitude plus brightness of the NASA mosaics). Replace <code>grids/*.json</code> with
+    LRO Diviner and Mars Climate Database data for real results.
+  </p>
+
+  <section class="panel earth">
+    <div class="panel-head">
+      <h2>Earth</h2>
+      <span class="readout" id="earth-hover">Hover over the map, click to choose a point</span>
+    </div>
+    <div class="map-wrap">
+      <canvas id="earth-map" width="2048" height="1024"></canvas>
+    </div>
+  </section>
+
+  <section class="controls">
+    <div class="card" id="earth-card">
+      <div class="label">Selected point</div>
+      <div class="big" id="sel-coord">None yet</div>
+      <div class="temps">
+        <div><span>Average</span><b id="t-mean">–</b></div>
+        <div><span>Daily high</span><b id="t-high">–</b></div>
+        <div><span>Daily low</span><b id="t-low">–</b></div>
+      </div>
+      <div class="status" id="status"></div>
+    </div>
+
+    <div class="card">
+      <div class="label">Compare Earth's…</div>
+      <div class="seg" id="mode">
+        <button data-mode="mean" class="on">Average</button>
+        <button data-mode="high">Daily high</button>
+        <button data-mode="low">Daily low</button>
+      </div>
+      <label class="label" for="scale">0% match at a difference of <b id="scale-val">40</b> °C</label>
+      <input type="range" id="scale" min="5" max="150" step="5" value="40">
+      <label class="label" for="opacity">Heat map opacity</label>
+      <input type="range" id="opacity" min="0" max="100" value="85">
+    </div>
+
+    <div class="card legend-card">
+      <div class="label">Temperature match</div>
+      <div class="legend"></div>
+      <div class="legend-ticks"><span>0%</span><span>50%</span><span>100%</span></div>
+    </div>
+  </section>
+
+  <section class="pair">
+    <div class="panel" data-body="moon">
+      <div class="panel-head">
+        <h2>Moon</h2>
+        <span class="readout" id="moon-hover"></span>
+      </div>
+      <div class="map-wrap"><canvas id="moon-map" width="2048" height="1024"></canvas></div>
+      <div class="stats" id="moon-stats">Pick a point on Earth to compare.</div>
+    </div>
+    <div class="panel" data-body="mars">
+      <div class="panel-head">
+        <h2>Mars</h2>
+        <span class="readout" id="mars-hover"></span>
+      </div>
+      <div class="map-wrap"><canvas id="mars-map" width="2048" height="1024"></canvas></div>
+      <div class="stats" id="mars-stats">Pick a point on Earth to compare.</div>
+    </div>
+  </section>
+
+  <footer>
+    Imagery: NASA GIBS Blue Marble, NASA Moon Trek (LRO WAC), NASA Mars Trek (Viking MDIM 2.1).
+    Earth data: NASA POWER.
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>
