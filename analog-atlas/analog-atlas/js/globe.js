@@ -95,6 +95,13 @@ export class GlobeView {
     this.zones = add(new WorldWind.RenderableLayer('Target zones'));
     this.zonesKey = null;
 
+    // Temperature-match heat map (Moon/Mars) and the Earth reference marker
+    this.heatLayer = add(new WorldWind.RenderableLayer('Temperature match'));
+    this.heatLayer.pickEnabled = false;
+    this.heatLayer.opacity = this.heatOpacity ?? 0.75;
+    this.refLayer = add(new WorldWind.RenderableLayer('Reference point'));
+    this.refLayer.pickEnabled = false;
+
     this.atmosphere = null;
     if (body.atmosphere) {
       this.atmosphere = new WorldWind.AtmosphereLayer();
@@ -158,6 +165,50 @@ export class GlobeView {
 
   insertBeforeSlot(layer) {
     this.wwd.insertLayer(this.wwd.indexOfLayer(this.tacSlot), layer);
+  }
+
+  /* ---------------- temperature match ---------------- */
+  /** Drape an equirectangular canvas over the whole body, or clear it with null. */
+  setHeatmap(canvas) {
+    this.heatLayer.removeAllRenderables();
+    if (canvas) {
+      this.heatLayer.addRenderable(new WorldWind.SurfaceImage(WorldWind.Sector.FULL_SPHERE, new WorldWind.ImageSource(canvas)));
+    }
+    this.wwd.redraw();
+  }
+
+  setHeatOpacity(opacity) {
+    this.heatOpacity = opacity;
+    this.heatLayer.opacity = opacity;
+    this.wwd.redraw();
+  }
+
+  /** Crosshair marker for the Earth reference point (null clears it). */
+  setReference(pos) {
+    this.refLayer.removeAllRenderables();
+    if (pos) {
+      const c = document.createElement('canvas');
+      c.width = c.height = 64;
+      const g = c.getContext('2d');
+      g.strokeStyle = '#ffffff'; g.lineWidth = 3;
+      g.beginPath(); g.arc(32, 32, 14, 0, Math.PI * 2); g.stroke();
+      g.beginPath(); g.moveTo(32, 2); g.lineTo(32, 18); g.moveTo(32, 46); g.lineTo(32, 62);
+      g.moveTo(2, 32); g.lineTo(18, 32); g.moveTo(46, 32); g.lineTo(62, 32); g.stroke();
+      g.fillStyle = '#1a9850'; g.beginPath(); g.arc(32, 32, 6, 0, Math.PI * 2); g.fill();
+      const attrs = new WorldWind.PlacemarkAttributes(null);
+      attrs.imageSource = new WorldWind.ImageSource(c);
+      attrs.imageScale = 0.6;
+      attrs.imageOffset = new WorldWind.Offset(WorldWind.OFFSET_FRACTION, 0.5, WorldWind.OFFSET_FRACTION, 0.5);
+      attrs.labelAttributes.color = WorldWind.Color.WHITE;
+      attrs.labelAttributes.font = new WorldWind.Font(13, 'normal', 'normal', '600', 'Rajdhani, sans-serif');
+      attrs.labelAttributes.offset = new WorldWind.Offset(WorldWind.OFFSET_FRACTION, 0.5, WorldWind.OFFSET_FRACTION, -0.9);
+      const pm = new WorldWind.Placemark(new WorldWind.Position(pos.lat, pos.lon, 0), false, attrs);
+      pm.altitudeMode = WorldWind.CLAMP_TO_GROUND;
+      pm.alwaysOnTop = true;
+      pm.label = pos.label || '';
+      this.refLayer.addRenderable(pm);
+    }
+    this.wwd.redraw();
   }
 
   /* ---------------- markers ---------------- */
@@ -299,7 +350,13 @@ export class GlobeView {
     c.addEventListener('pointerdown', (e) => { down = { x: e.clientX, y: e.clientY }; });
     c.addEventListener('pointerup', (e) => {
       if (!down || Math.hypot(e.clientX - down.x, e.clientY - down.y) > 5) return;
-      this.emit('select', this.pickSite(e.clientX, e.clientY));
+      const site = this.pickSite(e.clientX, e.clientY);
+      this.emit('select', site);
+      if (!site) {
+        // Click on bare ground: report the surface position (used for the Earth reference)
+        const t = this.wwd.pickTerrain(this.wwd.canvasCoordinates(e.clientX, e.clientY)).terrainObject();
+        if (t) this.emit('ground', { lat: t.position.latitude, lon: t.position.longitude });
+      }
     });
 
     c.addEventListener('pointermove', (e) => {

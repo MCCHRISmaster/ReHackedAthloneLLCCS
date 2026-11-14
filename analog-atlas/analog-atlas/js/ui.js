@@ -162,3 +162,84 @@ export function updateAltitude(rangeM) {
 }
 
 export function setCredit(text) { $('credit').textContent = text; }
+
+/* ---------------- Temperature match panel ---------------- */
+
+const fmtC = (v) => (v == null || Number.isNaN(v) ? '—' : `${v.toFixed(1)}°C`);
+const STAT_LABEL = { mean: 'AVG', high: 'HIGH', low: 'LOW' };
+
+/**
+ * m = { body, ref, loading, error, stat, range, opacity, gridLines, gridError }
+ * h = { onStat, onRange, onOpacity, onGridLines, onGoto, onClear }
+ */
+export function renderTempPanel(m, h) {
+  const box = $('temp-body');
+  const isEarth = m.body === 'earth';
+  let refHtml;
+  if (m.loading) refHtml = '<div class="temp-hint">FETCHING SURFACE TEMPERATURE FROM NASA POWER…</div>';
+  else if (m.error) refHtml = `<div class="temp-hint err">${esc(m.error)}</div>`;
+  else if (!m.ref) {
+    refHtml = isEarth
+      ? '<div class="temp-hint">Click anywhere on Earth, or an analog site, to set the reference temperature.</div>'
+      : '<div class="temp-hint">No Earth reference yet.</div><button class="jump temp-goto" data-goto="earth"><span class="jump-body">EARTH</span><span class="jump-name">Pick a spot on Earth</span><span class="jump-arrow">▸</span></button>';
+  } else {
+    const r = m.ref;
+    refHtml = `
+      <div class="temp-ref">
+        <div class="temp-ref-name">${esc(r.label)}</div>
+        <div class="coords">${fmtLat(r.lat)} · ${fmtLon(r.lon)}</div>
+        <button class="temp-clear" title="Clear reference" aria-label="Clear reference">✕</button>
+      </div>
+      <div class="temp-vals">${['mean', 'high', 'low'].map((k) =>
+        `<div class="${k === m.stat ? 'on' : ''}"><span>${STAT_LABEL[k]}</span><b>${fmtC(r[k])}</b></div>`).join('')}</div>`;
+  }
+
+  const controls = m.ref ? `
+    <div class="temp-row">
+      <span class="temp-lbl">COMPARE</span>
+      <div class="temp-chips">${['mean', 'high', 'low'].map((k) =>
+        `<button class="chip" data-stat="${k}" aria-pressed="${k === m.stat}">${STAT_LABEL[k]}</button>`).join('')}</div>
+    </div>
+    <label class="temp-row"><span class="temp-lbl">0% AT ±<b id="temp-range-val">${m.range}</b>°C</span>
+      <input type="range" id="temp-range" min="5" max="200" step="5" value="${m.range}"></label>
+    <label class="temp-row"><span class="temp-lbl">OPACITY</span>
+      <input type="range" id="temp-opacity" min="10" max="100" value="${Math.round(m.opacity * 100)}"></label>
+    <div class="temp-row">
+      <span class="temp-lbl">MATCH</span>
+      <div class="temp-legend-wrap"><div class="temp-legend"></div>
+        <div class="temp-ticks"><span>0%</span><span>50%</span><span>100%</span></div></div>
+    </div>
+    <div class="temp-row"><span class="temp-lbl">CELLS</span>
+      <button class="chip" id="temp-grid" aria-pressed="${m.gridLines}">2° GRID LINES</button></div>
+    ${isEarth
+      ? `<div class="jumps temp-jumps">${['moon', 'mars'].map((b) => `<button class="jump temp-goto" data-goto="${b}">
+          <span class="jump-body">VIEW ON</span><span class="jump-name">${BODIES[b].label}</span><span class="jump-arrow">▸</span></button>`).join('')}</div>`
+      : `<div class="temp-summary" id="temp-summary"></div>`}
+    ${m.gridError ? `<div class="temp-hint err">${esc(m.gridError)}</div>` : ''}
+    ${!isEarth ? '<div class="temp-note">Moon/Mars temperatures: placeholder model. Replace <code>data/*_grid.csv</code> with Diviner / MCD data.</div>' : ''}` : '';
+
+  box.innerHTML = refHtml + controls;
+  box.querySelectorAll('[data-stat]').forEach((b) => b.addEventListener('click', () => h.onStat(b.dataset.stat)));
+  box.querySelectorAll('[data-goto]').forEach((b) => b.addEventListener('click', () => h.onGoto(b.dataset.goto)));
+  box.querySelector('.temp-clear')?.addEventListener('click', h.onClear);
+  box.querySelector('#temp-grid')?.addEventListener('click', () => h.onGridLines(!m.gridLines));
+  const range = box.querySelector('#temp-range');
+  range?.addEventListener('input', () => { $('temp-range-val').textContent = range.value; h.onRange(Number(range.value)); });
+  const op = box.querySelector('#temp-opacity');
+  op?.addEventListener('input', () => h.onOpacity(Number(op.value) / 100));
+}
+
+/** s = summary from temperature.summarize() or null */
+export function updateTempSummary(s, m) {
+  const el = $('temp-summary');
+  if (!el) return;
+  if (!s) { el.innerHTML = 'No grid data loaded.'; return; }
+  if (s.best <= 0) {
+    el.innerHTML = `No cell within ${m.range}°C of ${fmtC(m.ref[m.stat])}. Widen the range or compare HIGH / LOW.`;
+    return;
+  }
+  el.innerHTML = `BEST <b>${Math.round(s.best * 100)}%</b> at ${fmtLat(s.lat)} ${fmtLon(s.lon)} (${fmtC(s.temp)})<br>` +
+    `<b>${(s.goodShare * 100).toFixed(1)}%</b> of surface ≥ 75% match`;
+}
+
+export function updateTempReadout(text) { $('ro-temp').textContent = text || '—'; }

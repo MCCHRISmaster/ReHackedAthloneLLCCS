@@ -16,6 +16,12 @@ Local `main` (not yet pushed) has `heat-map` and `Graphical_Elements` merged in.
 ### `analog-atlas/analog-atlas/`: 3D globe (teammate, from `Graphical_Elements`)
 - NASA WebWorldWind globe with Earth/Moon/Mars tabs, analog site markers with briefings, NASA GIBS and Trek imagery layers, and a "Tactical" stylised view.
 - Site data is in `js/data/sites.js`. See its README.
+- **This is now the single main page** (the repo-root `index.html` redirects here). It has the temperature-match heat map built in:
+  - `js/temperature.js`: CSV grid loading, NASA POWER lookup, match canvas, summary
+  - `globe.js`: `setHeatmap(canvas)` drapes a full-sphere `SurfaceImage`; `setReference(pos)` places the Earth crosshair; clicking bare ground emits `ground`
+  - `main.js`: `state.temp` holds the reference and settings; clicking Earth (ground or a site) fetches the reference temperature
+  - `ui.js`: `renderTempPanel` draws the TEMPERATURE MATCH panel; a TEMP readout sits in the bottom bar
+  - Grids: `data/moon_grid.csv` and `data/mars_grid.csv` in the template format. Replace them with real Diviner / MCD data.
 - Run: `node prototype/server.js analog-atlas/analog-atlas 8002`, then open http://localhost:8002.
 
 ## The challenge

@@ -35,6 +35,10 @@
   </header>
 
   <div class="left-col">
+    <aside class="panel temp-panel" id="temp-panel" aria-live="polite">
+      <div class="panel-head"><span>TEMPERATURE MATCH</span><span class="src-tag">NASA POWER</span></div>
+      <div class="temp-body" id="temp-body"></div>
+    </aside>
     <aside class="panel site-panel" id="site-list-panel">
       <div class="panel-head">
         <span id="site-list-title">ANALOG SITES</span><span class="count" id="site-count">0</span>
@@ -62,7 +66,8 @@
     <div class="readout"><span class="lbl">LAT</span><span id="ro-lat">—</span></div>
     <div class="readout"><span class="lbl">LON</span><span id="ro-lon">—</span></div>
     <div class="readout"><span class="lbl">ALT</span><span id="ro-alt">—</span></div>
-    <div class="hint">DRAG SPIN · SCROLL ZOOM · RIGHT-DRAG TILT · 1/2/3 BODY · T TACTICAL</div>
+    <div class="readout readout-temp"><span class="lbl">TEMP</span><span id="ro-temp">—</span></div>
+    <div class="hint">CLICK EARTH = SET TEMPERATURE · DRAG SPIN · SCROLL ZOOM · 1/2/3 BODY · T TACTICAL</div>
     <div class="credit" id="credit"></div>
   </footer>
 
