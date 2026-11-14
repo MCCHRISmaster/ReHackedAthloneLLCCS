@@ -65,7 +65,13 @@ SOURCES = [
 ]
 
 
+UNIT_SPECIAL = {"crater_density_5km_n": "per 100,000 km2", "crater_density_20km_n": "per 100,000 km2", "volcano_n": "volcanoes in cell",
+                "cave_n_100km": "listed caves within 100 km", "pit_n": "pits in cell", "mare_pit_n": "mare pits in cell"}
+
+
 def unit_of(col: str) -> str:
+    if col in UNIT_SPECIAL:
+        return UNIT_SPECIAL[col]
     for suf, u in UNIT_SUFFIX:
         if col.endswith(suf):
             return u

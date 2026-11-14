@@ -25,7 +25,7 @@
       "earth": {"op": "col", "col": "lith_basic_volcanic_pct", "div": 100}, "moon": {"op": "col", "col": "mare_idx"}, "mars": {"op": "col", "col": "geo_volcanic_pct", "div": 100, "times_scaled": ["thermal_inertia_tiu", 100, 350]} },
     { "id": "crystalline", "label": "Crystalline highlands", "dimensions": ["geology"], "range": 0.6, "unit": "", "digits": 2, "index": true,
       "earth": {"op": "sum", "cols": ["lith_plutonic_pct", "lith_metamorphic_pct"], "div": 100}, "moon": {"op": "oneminus", "col": "mare_idx"}, "mars": {"op": "col", "col": "geo_highland_pct", "div": 100} },
-    { "id": "volcanic", "label": "Volcanic activity", "dimensions": ["geology"], "range": 0.7, "unit": "", "digits": 2, "index": true,
+    { "id": "volcanic", "label": "Volcanic activity", "dimensions": ["geology"], "range": 1.0, "unit": "", "digits": 2, "index": true,
       "earth": {"op": "col", "col": "volcano_prox_idx"}, "moon": {"op": "const", "value": 0.3}, "mars": {"op": "col", "col": "geo_volcanic_pct", "div": 100} },
     { "id": "temp_mean", "label": "Mean temperature", "dimensions": ["thermal"], "range": 40, "unit": " C", "digits": 0,
       "earth": {"op": "col", "col": "temp_mean_c"}, "moon": {"op": "col", "col": "temp_mean_c"}, "mars": {"op": "col", "col": "temp_mean_c"} },

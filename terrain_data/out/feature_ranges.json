@@ -14,7 +14,7 @@
   "cratering": 0.6,
   "basaltic": 0.6,
   "crystalline": 0.6,
-  "volcanic": 0.7,
+  "volcanic": 1.0,
   "temp_mean": 40,
   "temp_high": 40,
   "temp_low": 40,

@@ -21,7 +21,7 @@ PY = sys.executable
 PHASES = {
     "setup":    ["00_setup_check.py"],
     "moon":     ["10_moon_features.py"],
-    "earth":    ["20a_download_earth.py", "21_earth_temperature.py", "20_earth_features.py"],
+    "earth":    ["20a_download_earth.py", "21_earth_temperature.py --ocean", "20_earth_features.py"],
     "mars":     ["30_mars_features.py"],
     "curated":  ["41_verify_coords.py", "40_curated_tables.py"],
     "score":    ["50_score.py", "60_export.py"],
@@ -40,7 +40,9 @@ def main() -> int:
         if name not in PHASES:
             sys.exit(f"unknown phase {name}; choose from {', '.join(ORDER)} or all")
         for script in PHASES[name]:
-            cmd = [PY, "-I", str(HERE / script)]
+            parts = script.split()                          # a phase entry may carry flags, e.g. "21_earth_temperature.py --ocean"
+            script = parts[0]
+            cmd = [PY, "-I", str(HERE / script)] + parts[1:]
             if script == "20a_download_earth.py":
                 cmd += ["--minutes", "120"]
             if force and script in FORCEABLE:

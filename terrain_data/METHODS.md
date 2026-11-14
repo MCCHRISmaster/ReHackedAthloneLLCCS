@@ -124,3 +124,27 @@ Gravity (Moon one sixth, Mars 38 percent of Earth), vacuum or very thin air, rad
 | ESA CAVES cave in Sardinia | The prompt named "Sa Grutta"; the entry uses the Su Bentu cave system with coordinates still to be confirmed. |
 | GLiM "fractions per class" | The download holds one dominant class per 0.5-degree cell; shares are quarters. |
 | Crater column for scoring | `crater_density_5km_n` is used instead of the 20 km column. |
+
+## 8. Tuning log
+
+Starting values were the ones in the build prompt (section 6.1). The prompt allows tuning a range when a classic analog ranks badly; every change is listed here with its reason.
+
+| Change | Before | After | Why |
+|---|---|---|---|
+| Range of the "volcanic activity" comparison | 0.7 | 1.0 | An Earth place next to an active volcano (Hawaii, Iceland) scored zero against the Moon's flat 0.3. Being near an active volcano says something about activity, not about whether the ground is similar, so the penalty was softened. Mauna Kea's geology rank against Apollo 17 moved from 27th to 22nd of 72. |
+| Minimum data for an overall score | none | 10 of 21 comparisons | A site with one comparison scored 88 (Vulcano, whose cell had no data). Overall is now unavailable below 10 usable comparisons. |
+| Crater column for Moon and Mars | 20 km | 5 km | Few 20 km craters fall in a 2-degree cell, so that column is mostly zero. |
+
+Nothing else was tuned. The pre-tuning configuration is saved in `work/features_before_tuning.json` (not committed).
+
+## 9. What validation showed (read this before answering questions)
+
+Twelve classic analog-versus-target pairs were ranked among all 72 named Earth sites (`out/validation.md`, section 3). The honest summary:
+
+- **Good:** Haughton Crater and the Flashline station rank 1st and 2nd of 72 against the Phoenix polar landing site. Lava Beds ranks 1st for subsurface similarity to the Marius Hills pit. The Lofoten anorthosites rank 3rd, and Stillwater 8th, for highland geology against Apollo 16. Yungay ranks 4th for dust against Meridiani Planum.
+- **Middling:** The Corona lava tube ranks 11th for subsurface against the Marius Hills pit, and Kilbourne Hole 12th for crewed training against Apollo 16.
+- **Poor, with reasons:** Hawaiian basalt sites rank about 22nd for geology against Apollo 17, because Apollo 17 is a mix of mare basalt and highland massifs and the Lunar Prospector data smear it into a middling mare index. Rio Tinto ranks mid-table (34th) for habitability against Meridiani because the habitability dimension also rewards dryness and bare ground, which a wet river lacks; its extreme-life match is 100 percent. Haughton ranks 39th for Deuteronilus Mensae mainly because the Mars ice index there is a latitude proxy that gives only 0.2 at 44 degrees north, although the region is known to be ice-rich (water match 0), and its terrain match is only 45 percent. SP Crater ranks low against Apollo 16 because it is a basalt cone and Apollo 16 is highland (geology match 16 percent).
+
+Across all 72 sites and all targets, the median overall score (raw preset) is about 43 against Moon targets and about 49 against Mars targets, and the thermal dimension is the weakest: its median match is 0.08 against Moon targets and 0.17 against Mars targets, and 90 percent of pairs are below 0.17 and 0.23. Terrain, geology, subsurface and water carry the totals.
+
+**Read the scores as rankings, not percentages.** Many comparisons are matches because both places lack something (no ice, no vegetation, no wind on the Moon), and the Moon's constants for dust, wind and dryness are the same for every Earth place. A score of 57 means "better than most of the list", not "57 percent like Mars". The pitch is the ranking and the breakdown: the analogy breaks down in temperature, gravity, atmosphere and radiation long before it breaks down in terrain and rock.

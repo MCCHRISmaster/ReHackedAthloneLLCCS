@@ -139,3 +139,18 @@ Run Python as `terrain_data/.venv/Scripts/python.exe`. Model was switched to Son
 - 2026-11-14 16:48 earth volcanoes: 1214 Holocene volcanoes from GVP
 - 2026-11-14 16:49 earth features built; sources ['etopo2022', 'glim_v1', 'gvp_votw', 'curated_caves;curated_impacts', 'worldclim_2_1', 'natural_earth', 'earth_climate_proxy']; missing ['temperature (run 21_earth_temperature.py)']
 - 2026-11-14 16:50 curated tables enriched; 24 demo images saved locally
+
+## Phase 4: scoring and export (2026-11-14 ~16:50)
+- config/features.json: 21 comparisons, min_available 10. config/presets.json: raw/crewed/base/rover (human weights). config/caveats.json.
+- pipeline/score_core.py (Python) and js/score.js (browser/Node) implement the same rules; js/test_score.mjs runs pairs for 70_validate.py. Agreement is better than 1e-7 on ten pairs. Full-grid pass in Node: ~60 ms (Earth place vs all Mars cells), ~210 ms (Mars target vs all Earth cells).
+- 50_score.py -> out/matches.json (4 MB): per target and preset top 25 cells, top 10 sites, surprise list; per site x target overall, 4 presets, raw dims, coverage; losses and alternatives for each site's 5 best targets per body plus the demo targets.
+- Fixes found by checking: Vulcano scored 88 from a single comparison (added min_available), island sites had no features (earth_features_all.npz holds 1-25 percent land cells for site lookups), Lanzarote and Vulcano have no GLiM class (curated lith_override = basic_volcanic for timanfaya, cueva-de-los-verdes, vulcano), Shackleton id renamed from shackleton-crater to match the globe's seed id.
+- 60_export.py -> out/sites.json (132 entries, 4 MB), targets.json, sites.csv, sources.csv, presets.json, caveats.json.
+- 70_validate.py -> out/validation.md. Hard checks pass.
+- Documents written: README, METHODS, DATA_SOURCES, AI_USAGE, HANDOFF. demo/index.html is a full detail page: http://localhost:8000/terrain_data/demo/index.html?id=athlone
+- Pending when this was written: NASA POWER temperature pull (cache raw/power, 1320 requests). When it finishes: 20_earth_features.py --force, 50_score.py, 60_export.py, 70_validate.py, then review the rankings in validation.md section 3 and tune ranges if the classics rank badly (record every change in METHODS.md).
+- 2026-11-14 17:09 POWER temperature pull: 440 boxes, 1 failed requests
+- 2026-11-14 17:10 POWER temperature pull: 440 boxes, 0 failed requests
+- 2026-11-14 17:10 earth GLiM: 0.5 deg grid, 16 classes, 23369 1-degree cells covered
+- 2026-11-14 17:10 earth volcanoes: 1214 Holocene volcanoes from GVP
+- 2026-11-14 17:10 earth features built; sources ['etopo2022', 'glim_v1', 'gvp_votw', 'curated_caves;curated_impacts', 'worldclim_2_1', 'nasa_power_clim', 'natural_earth', 'earth_climate_proxy']; missing []

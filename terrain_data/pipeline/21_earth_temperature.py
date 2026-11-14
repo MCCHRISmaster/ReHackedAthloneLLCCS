@@ -16,7 +16,9 @@ Outputs:
   out/earth_grid_power_full.csv       2-degree team layout, source_id nasa_power_clim
   out/earth_grid_filled.csv           teammate POWER rows where present, else the rows above
 
-    python -I pipeline/21_earth_temperature.py            (about 40 minutes, run in background)
+    python -I pipeline/21_earth_temperature.py            land boxes only (about 45 minutes, run in background)
+    python -I pipeline/21_earth_temperature.py --ocean    every box, so the 2-degree grid has no blank cells
+                                                          (the team checker requires a value in every cell)
 """
 from __future__ import annotations
 
@@ -68,6 +70,11 @@ def land_boxes() -> list[tuple[int, int, int, int]]:
     return boxes
 
 
+def all_boxes() -> list[tuple[int, int, int, int]]:
+    """Every 10-degree box on the globe (land and ocean), so the grid has no blank cells."""
+    return [(la, la + BOX, lo, lo + BOX) for la in range(-90, 90, BOX) for lo in range(-180, 180, BOX)]
+
+
 def get(param: str, b: tuple[int, int, int, int]) -> dict | None:
     """One cached POWER regional request. Returns parsed JSON or None."""
     lat0, lat1, lon0, lon1 = b
@@ -114,7 +121,7 @@ def accumulate(data: dict, param: str, sums: dict, counts: dict) -> None:
 
 
 def main() -> None:
-    boxes = land_boxes()
+    boxes = all_boxes() if "--ocean" in sys.argv else land_boxes()
     print(f"{len(boxes)} land boxes x 3 parameters = {len(boxes) * 3} requests (cached ones are free)", flush=True)
     sums = {(t, p): np.zeros(g.n) for t, g in (("1", G1), ("2", G2)) for p in PARAMS}
     counts = {k: np.zeros(len(v)) for k, v in sums.items()}
