@@ -1,0 +1,705 @@
+[
+ {
+  "id": "haughton-crater",
+  "body": "earth",
+  "name": "Haughton Crater",
+  "region": "Devon Island, Nunavut, Canada",
+  "lat": 75.38,
+  "lon": -89.67,
+  "targets": [
+   "mars",
+   "moon"
+  ],
+  "environment": "Polar-desert impact crater",
+  "summary": "A ~20 km impact structure in a cold, dry, sparsely vegetated polar desert; long used for Mars field-operations rehearsals.",
+  "strengths": [
+   "Impact geology and breccias",
+   "Cold, dry, remote operations",
+   "Permafrost and ground ice"
+  ],
+  "limits": [
+   "Earth gravity and atmosphere",
+   "Liquid water in summer",
+   "Well studied already"
+  ],
+  "scores": {
+   "geology": 0.79,
+   "terrain": 0.44,
+   "thermal": 0.48,
+   "water": 0.53,
+   "dust": 0.78,
+   "subsurface": 0.86,
+   "habitability": 0.39,
+   "operations": 0.46
+  },
+  "datasets": [],
+  "mock": true,
+  "site_type": "known_analog",
+  "country": "Canada",
+  "image_url": "",
+  "image_credit": "",
+  "wikipedia_url": "",
+  "links": [],
+  "programs": [],
+  "metrics": {
+   "elevation_m": {
+    "value": null,
+    "unit": "m"
+   }
+  },
+  "caveats": [
+   "MOCK DATA: placeholder scores until the pipeline has run."
+  ],
+  "source_ids": [],
+  "matches": {
+   "jezero": {
+    "overall": 0.29,
+    "presets": {
+     "raw": 0.54,
+     "crewed": 0.37,
+     "base": 0.66,
+     "rover": 0.8
+    },
+    "dims": {
+     "geology": 0.93,
+     "terrain": 0.6,
+     "thermal": 0.73,
+     "water": 0.84,
+     "dust": 0.5,
+     "subsurface": 0.66,
+     "habitability": 0.87,
+     "operations": 0.32
+    },
+    "coverage": {
+     "geology": 1.0,
+     "terrain": 1.0,
+     "thermal": 1.0,
+     "water": 1.0,
+     "dust": 1.0,
+     "subsurface": 1.0,
+     "habitability": 1.0,
+     "operations": 1.0
+    },
+    "losses": [],
+    "alternative": {}
+   },
+   "shackleton": {
+    "overall": 0.5,
+    "presets": {
+     "raw": 0.94,
+     "crewed": 0.35,
+     "base": 0.86,
+     "rover": 0.3
+    },
+    "dims": {
+     "geology": 0.4,
+     "terrain": 0.67,
+     "thermal": 0.63,
+     "water": 0.78,
+     "dust": 0.67,
+     "subsurface": 0.62,
+     "habitability": 0.91,
+     "operations": 0.3
+    },
+    "coverage": {
+     "geology": 1.0,
+     "terrain": 1.0,
+     "thermal": 1.0,
+     "water": 1.0,
+     "dust": 1.0,
+     "subsurface": 1.0,
+     "habitability": 1.0,
+     "operations": 1.0
+    },
+    "losses": [],
+    "alternative": {}
+   }
+  }
+ },
+ {
+  "id": "atacama-yungay",
+  "body": "earth",
+  "name": "Yungay, Atacama",
+  "region": "Antofagasta Region, Chile",
+  "lat": -24.08,
+  "lon": -69.92,
+  "targets": [
+   "mars"
+  ],
+  "environment": "Hyperarid desert",
+  "summary": "One of the driest places on Earth, with oxidising, nearly sterile soils that resemble aspects of Martian regolith.",
+  "strengths": [
+   "Extreme aridity",
+   "Oxidant-rich soils",
+   "Life-detection instrument testing"
+  ],
+  "limits": [
+   "Warm compared with Mars",
+   "Dense atmosphere, UV filtered"
+  ],
+  "scores": {
+   "geology": 0.62,
+   "terrain": 0.7,
+   "thermal": 0.69,
+   "water": 0.86,
+   "dust": 0.47,
+   "subsurface": 0.87,
+   "habitability": 0.33,
+   "operations": 0.48
+  },
+  "datasets": [],
+  "mock": true,
+  "site_type": "known_analog",
+  "country": "Chile",
+  "image_url": "",
+  "image_credit": "",
+  "wikipedia_url": "",
+  "links": [],
+  "programs": [],
+  "metrics": {
+   "elevation_m": {
+    "value": null,
+    "unit": "m"
+   }
+  },
+  "caveats": [
+   "MOCK DATA: placeholder scores until the pipeline has run."
+  ],
+  "source_ids": [],
+  "matches": {
+   "jezero": {
+    "overall": 0.69,
+    "presets": {
+     "raw": 0.27,
+     "crewed": 0.79,
+     "base": 0.92,
+     "rover": 0.33
+    },
+    "dims": {
+     "geology": 0.39,
+     "terrain": 0.27,
+     "thermal": 0.48,
+     "water": 0.33,
+     "dust": 0.73,
+     "subsurface": 0.71,
+     "habitability": 0.36,
+     "operations": 0.26
+    },
+    "coverage": {
+     "geology": 1.0,
+     "terrain": 1.0,
+     "thermal": 1.0,
+     "water": 1.0,
+     "dust": 1.0,
+     "subsurface": 1.0,
+     "habitability": 1.0,
+     "operations": 1.0
+    },
+    "losses": [],
+    "alternative": {}
+   }
+  }
+ },
+ {
+  "id": "rio-tinto",
+  "body": "earth",
+  "name": "RÃ­o Tinto",
+  "region": "Huelva, Andalusia, Spain",
+  "lat": 37.72,
+  "lon": -6.56,
+  "targets": [
+   "mars"
+  ],
+  "environment": "Acidic, iron-rich river system",
+  "summary": "Highly acidic waters rich in iron and sulfate minerals such as jarosite, a mineral also identified on Mars by the Opportunity rover.",
+  "strengths": [
+   "Sulfate / iron mineralogy",
+   "Acidophile extremophiles"
+  ],
+  "limits": [
+   "Abundant liquid water",
+   "Partly shaped by mining"
+  ],
+  "scores": {
+   "geology": 0.52,
+   "terrain": 0.25,
+   "thermal": 0.41,
+   "water": 0.95,
+   "dust": 0.67,
+   "subsurface": 0.55,
+   "habitability": 0.39,
+   "operations": 0.36
+  },
+  "datasets": [],
+  "mock": true,
+  "site_type": "known_analog",
+  "country": "Spain",
+  "image_url": "",
+  "image_credit": "",
+  "wikipedia_url": "",
+  "links": [],
+  "programs": [],
+  "metrics": {
+   "elevation_m": {
+    "value": null,
+    "unit": "m"
+   }
+  },
+  "caveats": [
+   "MOCK DATA: placeholder scores until the pipeline has run."
+  ],
+  "source_ids": [],
+  "matches": {
+   "jezero": {
+    "overall": 0.32,
+    "presets": {
+     "raw": 0.81,
+     "crewed": 0.41,
+     "base": 0.36,
+     "rover": 0.6
+    },
+    "dims": {
+     "geology": 0.68,
+     "terrain": 0.74,
+     "thermal": 0.53,
+     "water": 0.56,
+     "dust": 0.51,
+     "subsurface": 0.54,
+     "habitability": 0.34,
+     "operations": 0.73
+    },
+    "coverage": {
+     "geology": 1.0,
+     "terrain": 1.0,
+     "thermal": 1.0,
+     "water": 1.0,
+     "dust": 1.0,
+     "subsurface": 1.0,
+     "habitability": 1.0,
+     "operations": 1.0
+    },
+    "losses": [],
+    "alternative": {}
+   }
+  }
+ },
+ {
+  "id": "lonar-crater",
+  "body": "earth",
+  "name": "Lonar Crater",
+  "region": "Maharashtra, India",
+  "lat": 19.98,
+  "lon": 76.51,
+  "targets": [
+   "moon",
+   "mars"
+  ],
+  "environment": "Impact crater in basalt",
+  "summary": "A young impact crater formed in Deccan Traps basalt â€” basalt being a dominant rock type of the lunar maria and much of Mars.",
+  "strengths": [
+   "Impact into basalt",
+   "Shock-metamorphosed rocks"
+  ],
+  "limits": [
+   "Humid climate, saline lake",
+   "Vegetated"
+  ],
+  "scores": {
+   "geology": 0.52,
+   "terrain": 0.4,
+   "thermal": 0.56,
+   "water": 0.52,
+   "dust": 0.58,
+   "subsurface": 0.86,
+   "habitability": 0.75,
+   "operations": 0.51
+  },
+  "datasets": [],
+  "mock": true,
+  "site_type": "known_analog",
+  "country": "India",
+  "image_url": "",
+  "image_credit": "",
+  "wikipedia_url": "",
+  "links": [],
+  "programs": [],
+  "metrics": {
+   "elevation_m": {
+    "value": null,
+    "unit": "m"
+   }
+  },
+  "caveats": [
+   "MOCK DATA: placeholder scores until the pipeline has run."
+  ],
+  "source_ids": [],
+  "matches": {
+   "shackleton": {
+    "overall": 0.83,
+    "presets": {
+     "raw": 0.69,
+     "crewed": 0.44,
+     "base": 0.91,
+     "rover": 0.62
+    },
+    "dims": {
+     "geology": 0.64,
+     "terrain": 0.86,
+     "thermal": 0.86,
+     "water": 0.27,
+     "dust": 0.54,
+     "subsurface": 0.34,
+     "habitability": 0.59,
+     "operations": 0.4
+    },
+    "coverage": {
+     "geology": 1.0,
+     "terrain": 1.0,
+     "thermal": 1.0,
+     "water": 1.0,
+     "dust": 1.0,
+     "subsurface": 1.0,
+     "habitability": 1.0,
+     "operations": 1.0
+    },
+    "losses": [],
+    "alternative": {}
+   },
+   "jezero": {
+    "overall": 0.7,
+    "presets": {
+     "raw": 0.29,
+     "crewed": 0.7,
+     "base": 0.88,
+     "rover": 0.34
+    },
+    "dims": {
+     "geology": 0.36,
+     "terrain": 0.66,
+     "thermal": 0.86,
+     "water": 0.59,
+     "dust": 0.36,
+     "subsurface": 0.78,
+     "habitability": 0.45,
+     "operations": 0.68
+    },
+    "coverage": {
+     "geology": 1.0,
+     "terrain": 1.0,
+     "thermal": 1.0,
+     "water": 1.0,
+     "dust": 1.0,
+     "subsurface": 1.0,
+     "habitability": 1.0,
+     "operations": 1.0
+    },
+    "losses": [],
+    "alternative": {}
+   }
+  }
+ },
+ {
+  "id": "cueva-de-los-verdes",
+  "body": "earth",
+  "name": "Cueva de los Verdes",
+  "region": "Lanzarote, Canary Islands, Spain",
+  "lat": 29.16,
+  "lon": -13.44,
+  "targets": [
+   "moon",
+   "mars"
+  ],
+  "environment": "Lava tube",
+  "summary": "Part of a long lava-tube system â€” the type of subsurface void proposed as shelter for future Moon and Mars bases.",
+  "strengths": [
+   "Lava tube geometry",
+   "Cave navigation and mapping tests"
+  ],
+  "limits": [
+   "Much smaller than candidate lunar tubes",
+   "Earth gravity"
+  ],
+  "scores": {
+   "geology": 0.48,
+   "terrain": 0.9,
+   "thermal": 0.71,
+   "water": 0.59,
+   "dust": 0.79,
+   "subsurface": 0.67,
+   "habitability": 0.89,
+   "operations": 0.76
+  },
+  "datasets": [],
+  "mock": true,
+  "site_type": "known_analog",
+  "country": "Spain",
+  "image_url": "",
+  "image_credit": "",
+  "wikipedia_url": "",
+  "links": [],
+  "programs": [],
+  "metrics": {
+   "elevation_m": {
+    "value": null,
+    "unit": "m"
+   }
+  },
+  "caveats": [
+   "MOCK DATA: placeholder scores until the pipeline has run."
+  ],
+  "source_ids": [],
+  "matches": {
+   "shackleton": {
+    "overall": 0.49,
+    "presets": {
+     "raw": 0.91,
+     "crewed": 0.76,
+     "base": 0.55,
+     "rover": 0.42
+    },
+    "dims": {
+     "geology": 0.66,
+     "terrain": 0.64,
+     "thermal": 0.71,
+     "water": 0.83,
+     "dust": 0.44,
+     "subsurface": 0.48,
+     "habitability": 0.25,
+     "operations": 0.93
+    },
+    "coverage": {
+     "geology": 1.0,
+     "terrain": 1.0,
+     "thermal": 1.0,
+     "water": 1.0,
+     "dust": 1.0,
+     "subsurface": 1.0,
+     "habitability": 1.0,
+     "operations": 1.0
+    },
+    "losses": [],
+    "alternative": {}
+   },
+   "jezero": {
+    "overall": 0.32,
+    "presets": {
+     "raw": 0.46,
+     "crewed": 0.55,
+     "base": 0.62,
+     "rover": 0.77
+    },
+    "dims": {
+     "geology": 0.51,
+     "terrain": 0.36,
+     "thermal": 0.51,
+     "water": 0.33,
+     "dust": 0.4,
+     "subsurface": 0.64,
+     "habitability": 0.35,
+     "operations": 0.57
+    },
+    "coverage": {
+     "geology": 1.0,
+     "terrain": 1.0,
+     "thermal": 1.0,
+     "water": 1.0,
+     "dust": 1.0,
+     "subsurface": 1.0,
+     "habitability": 1.0,
+     "operations": 1.0
+    },
+    "losses": [],
+    "alternative": {}
+   }
+  }
+ },
+ {
+  "id": "shackleton",
+  "body": "moon",
+  "name": "Shackleton Crater",
+  "region": "Lunar south pole",
+  "lat": -89.67,
+  "lon": 129.78,
+  "environment": "Polar impact crater (permanently shadowed interior)",
+  "summary": "21 km crater at the lunar south pole. Parts of its rim get near-continuous sunlight while the interior stays in permanent shadow and may trap water ice â€” a leading candidate area for a sustained Moon base.",
+  "analogs": [
+   "haughton-crater"
+  ],
+  "scores": {
+   "geology": 0.88,
+   "terrain": 0.34,
+   "thermal": 0.58,
+   "water": 0.77,
+   "dust": 0.33,
+   "subsurface": 0.4,
+   "habitability": 0.75,
+   "operations": 0.86
+  },
+  "datasets": [
+   {
+    "name": "IAU / USGS Gazetteer",
+    "url": "https://planetarynames.wr.usgs.gov/Feature/5450"
+   }
+  ],
+  "mock": true,
+  "site_type": "mission_site",
+  "country": "",
+  "image_url": "",
+  "image_credit": "",
+  "wikipedia_url": "",
+  "links": [],
+  "programs": [],
+  "metrics": {
+   "elevation_m": {
+    "value": null,
+    "unit": "m"
+   }
+  },
+  "caveats": [
+   "MOCK DATA: placeholder scores until the pipeline has run."
+  ],
+  "source_ids": [],
+  "matches": {},
+  "top_cells": []
+ },
+ {
+  "id": "marius-hills-pit",
+  "body": "moon",
+  "name": "Marius Hills Pit",
+  "region": "Oceanus Procellarum (nearside)",
+  "lat": 14.09,
+  "lon": -56.77,
+  "environment": "Possible lava-tube skylight",
+  "summary": "A pit tens of metres across inside a sinuous rille in the Marius Hills volcanic region, imaged by NASA LRO â€” a possible opening into a lava tube that could shelter a base.",
+  "analogs": [
+   "cueva-de-los-verdes",
+   "lonar-crater"
+  ],
+  "scores": {
+   "geology": 0.28,
+   "terrain": 0.55,
+   "thermal": 0.77,
+   "water": 0.4,
+   "dust": 0.43,
+   "subsurface": 0.77,
+   "habitability": 0.75,
+   "operations": 0.43
+  },
+  "datasets": [
+   {
+    "name": "LROC Pits Atlas",
+    "url": "https://lroc.im-ldi.com/pits/1"
+   }
+  ],
+  "mock": true,
+  "site_type": "mission_site",
+  "country": "",
+  "image_url": "",
+  "image_credit": "",
+  "wikipedia_url": "",
+  "links": [],
+  "programs": [],
+  "metrics": {
+   "elevation_m": {
+    "value": null,
+    "unit": "m"
+   }
+  },
+  "caveats": [
+   "MOCK DATA: placeholder scores until the pipeline has run."
+  ],
+  "source_ids": [],
+  "matches": {},
+  "top_cells": []
+ },
+ {
+  "id": "meridiani-planum",
+  "body": "mars",
+  "name": "Meridiani Planum",
+  "region": "Opportunity landing site",
+  "lat": -1.95,
+  "lon": -5.53,
+  "environment": "Sulfate-rich sedimentary plain",
+  "summary": "Where NASAâ€™s Opportunity rover found jarosite and other sulfate minerals that point to past acidic water.",
+  "analogs": [
+   "rio-tinto",
+   "atacama-yungay"
+  ],
+  "scores": {
+   "geology": 0.29,
+   "terrain": 0.52,
+   "thermal": 0.93,
+   "water": 0.35,
+   "dust": 0.83,
+   "subsurface": 0.63,
+   "habitability": 0.33,
+   "operations": 0.6
+  },
+  "datasets": [],
+  "mock": true,
+  "site_type": "mission_site",
+  "country": "",
+  "image_url": "",
+  "image_credit": "",
+  "wikipedia_url": "",
+  "links": [],
+  "programs": [],
+  "metrics": {
+   "elevation_m": {
+    "value": null,
+    "unit": "m"
+   }
+  },
+  "caveats": [
+   "MOCK DATA: placeholder scores until the pipeline has run."
+  ],
+  "source_ids": [],
+  "matches": {},
+  "top_cells": []
+ },
+ {
+  "id": "jezero",
+  "body": "mars",
+  "name": "Jezero Crater",
+  "region": "Perseverance landing site",
+  "lat": 18.38,
+  "lon": 77.58,
+  "environment": "Impact crater with ancient lake delta",
+  "summary": "A ~45 km crater that once held a lake, now explored by NASAâ€™s Perseverance rover for signs of ancient life.",
+  "analogs": [
+   "lonar-crater",
+   "haughton-crater"
+  ],
+  "scores": {
+   "geology": 0.83,
+   "terrain": 0.43,
+   "thermal": 0.66,
+   "water": 0.42,
+   "dust": 0.77,
+   "subsurface": 0.43,
+   "habitability": 0.79,
+   "operations": 0.46
+  },
+  "datasets": [],
+  "mock": true,
+  "site_type": "mission_site",
+  "country": "",
+  "image_url": "",
+  "image_credit": "",
+  "wikipedia_url": "",
+  "links": [],
+  "programs": [],
+  "metrics": {
+   "elevation_m": {
+    "value": null,
+    "unit": "m"
+   }
+  },
+  "caveats": [
+   "MOCK DATA: placeholder scores until the pipeline has run."
+  ],
+  "source_ids": [],
+  "matches": {},
+  "top_cells": []
+ }
+]
