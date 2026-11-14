@@ -1,8 +1,8 @@
 /**
- * HUD rendering: planet carousel, site list, imagery selector, briefing panel,
- * readouts. Pure DOM — knows nothing about WorldWind.
+ * HUD rendering: planet selector, site list, imagery selector, briefing and
+ * probe panels, readouts. Pure DOM — knows nothing about WorldWind.
  */
-import { BODIES, ANALOG_DIMENSIONS, TARGET_COLORS, TREK_BASE } from './config.js';
+import { BODIES, ANALOG_DIMENSIONS, TARGET_COLORS, METRICS, SCALES, BODY_FACTS } from './config.js';
 
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -18,160 +18,56 @@ export function setStatus(text, state = '') {
 }
 
 /* ------------------------------------------------------------------------ *
- *  Planet carousel
+ *  Planet selector (bottom centre)
  *
- *  Bodies sit on a tilted ring. The selected one is large at the front, the
- *  others small at the sides; arrows (or clicking a side planet, or Q / E)
- *  turn the ring so planets swing round behind and swap places. Each planet
- *  is a CSS sphere whose surface strip scrolls to make it spin.
+ *  The planets themselves now live in the space backdrop (js/space.js): the
+ *  current one is the globe, the others hang in the background. This control
+ *  just names the current body and steps between them. Rapid clicks only
+ *  change the label; the globe switches once you stop (settleMs).
  * ------------------------------------------------------------------------ */
-const CAROUSEL = {
-  ringRadiusPx: 118,    // horizontal half-width of the ring
-  ringTiltPx: 16,       // how far back planets rise (fakes looking down on the ring)
-  sideScale: 0.34,      // scale of a planet at the back of the ring (front = 1)
-  turnMs: 650,
-  settleMs: 320,        // wait this long after the last turn before switching globes
-};
+const SELECTOR = { settleMs: 320 };
+let selector = null;
 
-/** Equirectangular map(s) for a body's mini globe: one 2:1 image, or Trek's two 1:1 level-0 tiles. */
-function planetTexture(body, online) {
-  if (body.id === 'earth') return [WorldWind.configuration.baseUrl + 'images/BMNG_world.topo.bathy.200405.3.2048x1024.jpg'];
-  const def = body.layers.find((l) => l.id === body.defaultLayer);
-  if (!online || !def || def.source !== 'trek') return [];
-  const base = `${TREK_BASE}/${def.body}/EQ/${def.layer}/1.0.0/default/default028mm/0/0`;
-  return [`${base}/0.${def.ext}`, `${base}/1.${def.ext}`];
-}
-
-let carousel = null;
-
-function buildCarousel(online) {
+function buildSelector() {
   const root = $('planet-select');
   const bodies = Object.values(BODIES).filter((b) => b.enabled);
   root.innerHTML = `
-    <div class="ps-stage">
-      <div class="ps-orbit" aria-hidden="true"></div>
-      <div class="ps-pad" aria-hidden="true"></div>
-    </div>
     <button class="ps-arrow prev" aria-label="Previous planet (Q)">◀</button>
-    <button class="ps-arrow next" aria-label="Next planet (E)">▶</button>
     <div class="ps-label" aria-live="polite">
       <span class="ps-kicker"></span><span class="ps-name"></span>
-    </div>`;
-  const stage = root.querySelector('.ps-stage');
+      <span class="ps-pips">${bodies.map((b) => `<i data-body="${b.id}"></i>`).join('')}</span>
+    </div>
+    <button class="ps-arrow next" aria-label="Next planet (E)">▶</button>`;
+  const s = selector = { root, bodies, index: 0, timer: null, onSelect: null };
 
-  const items = bodies.map((b, i) => {
-    const el = document.createElement('button');
-    el.className = 'ps-planet';
-    el.dataset.body = b.id;
-    el.setAttribute('aria-label', b.label);
-    const tex = planetTexture(b, online);
-    // Two copies of the map side by side so the strip can loop seamlessly.
-    const tiles = [...tex, ...tex].map((src) =>
-      `<img src="${src}" alt="" draggable="false" style="width:${100 / (tex.length * 2)}%" onerror="this.parentNode.classList.add('failed')">`).join('');
-    el.innerHTML = `<span class="ps-sphere" style="--base:${b.fallbackColor}">
-        <span class="ps-surface ${tex.length ? '' : 'procedural'}">${tiles}</span>
-        <span class="ps-shade"></span>
-      </span>`;
-    el.addEventListener('click', () => turnTo(i));
-    stage.appendChild(el);
-    return { body: b, el };
-  });
-
-  const c = carousel = { root, items, n: items.length, pos: 0, target: 0, anim: null, timer: null, onSelect: null };
-
-  root.querySelector('.prev').addEventListener('click', () => step(-1));
-  root.querySelector('.next').addEventListener('click', () => step(1));
-
-  function step(dir) { setTarget(c.target + dir, true); }
-
-  /** Turn to item i the short way round. */
-  function turnTo(i) {
-    const cur = ((Math.round(c.target) % c.n) + c.n) % c.n;
-    let d = i - cur;
-    if (d > c.n / 2) d -= c.n;
-    if (d < -c.n / 2) d += c.n;
-    if (d) setTarget(c.target + d, true);
-  }
-
-  function setTarget(t, fromUser) {
-    c.target = t;
-    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    c.anim = { from: c.pos, to: t, start: performance.now(), dur: reduced ? 1 : CAROUSEL.turnMs };
-    requestAnimationFrame(tick);
-    updateLabel();
-    if (fromUser) {
-      clearTimeout(c.timer);
-      c.timer = setTimeout(() => c.onSelect && c.onSelect(activeItem().body.id), CAROUSEL.settleMs);
-    }
-  }
-
-  function tick(now) {
-    const a = c.anim;
-    if (!a) return;
-    const k = Math.min(1, (now - a.start) / a.dur);
-    const e = k < 0.5 ? 4 * k * k * k : 1 - Math.pow(-2 * k + 2, 3) / 2; // easeInOutCubic
-    c.pos = a.from + (a.to - a.from) * e;
-    layout();
-    if (k < 1) requestAnimationFrame(tick); else c.anim = null;
-  }
-
-  function layout() {
-    const active = activeItem();
-    items.forEach((it, i) => {
-      let rel = (i - c.pos) % c.n;                          // position on the ring, in slots
-      rel = ((rel + c.n * 1.5) % c.n) - c.n / 2;            // wrap into [-n/2, n/2)
-      const ang = (rel / c.n) * Math.PI * 2;
-      const depth = (Math.cos(ang) + 1) / 2;                // 1 = front, 0 = back
-      const s = CAROUSEL.sideScale + (1 - CAROUSEL.sideScale) * depth * depth;
-      const x = Math.sin(ang) * CAROUSEL.ringRadiusPx;
-      const y = -(1 - depth) * CAROUSEL.ringTiltPx;
-      it.el.style.transform = `translate(-50%, -50%) translate(${x.toFixed(1)}px, ${y.toFixed(1)}px) scale(${s.toFixed(3)})`;
-      it.el.style.zIndex = String(Math.round(depth * 100));
-      it.el.style.opacity = (0.55 + 0.45 * depth).toFixed(3);
-      it.el.style.filter = `brightness(${(0.55 + 0.45 * depth).toFixed(3)})`;
-      it.el.classList.toggle('front', it === active);
-      it.el.setAttribute('aria-current', String(it === active));
-      it.el.tabIndex = it === active ? -1 : 0;
-    });
-  }
-
-  function activeItem() { return items[((Math.round(c.target) % c.n) + c.n) % c.n]; }
-
-  function updateLabel() {
-    const it = activeItem();
-    const idx = items.indexOf(it) + 1;
-    root.querySelector('.ps-kicker').textContent = `TARGET BODY ${String(idx).padStart(2, '0')} / ${String(c.n).padStart(2, '0')}`;
-    root.querySelector('.ps-name').textContent = it.body.label;
-    root.dataset.body = it.body.id;
-  }
-
-  c.step = step;
-  c.turnTo = turnTo;
-  c.snap = (i) => { c.pos = c.target = i; layout(); updateLabel(); };
-  c.activeId = () => activeItem().body.id;
-  return c;
+  s.show = (i) => {
+    s.index = ((i % bodies.length) + bodies.length) % bodies.length;
+    const b = bodies[s.index];
+    root.querySelector('.ps-kicker').textContent = `TARGET BODY ${String(s.index + 1).padStart(2, '0')} / ${String(bodies.length).padStart(2, '0')}`;
+    root.querySelector('.ps-name').textContent = b.label;
+    root.dataset.body = b.id;
+    root.querySelectorAll('.ps-pips i').forEach((p) => p.classList.toggle('on', p.dataset.body === b.id));
+  };
+  s.step = (dir) => {
+    s.show(s.index + dir);
+    clearTimeout(s.timer);
+    s.timer = setTimeout(() => s.onSelect && s.onSelect(bodies[s.index].id), SELECTOR.settleMs);
+  };
+  root.querySelector('.prev').addEventListener('click', () => s.step(-1));
+  root.querySelector('.next').addEventListener('click', () => s.step(1));
+  return s;
 }
 
-/**
- * Planet selector. First call builds the carousel; later calls rotate it to
- * `activeId` (e.g. after a keyboard shortcut or a cross-planet jump).
- */
-export function renderBodyTabs(activeId, onSelect, { online = false } = {}) {
-  const first = !carousel;
-  if (first) buildCarousel(online);
-  carousel.onSelect = (id) => { if (id !== activeId) onSelect(id); };
-  const i = carousel.items.findIndex((it) => it.body.id === activeId);
-  if (i < 0) return;
-  if (first) carousel.snap(i);
-  else if (carousel.activeId() !== activeId) {
-    clearTimeout(carousel.timer); // external change wins over a pending user turn
-    carousel.turnTo(i);
-    clearTimeout(carousel.timer);
-  }
+/** Planet selector. Call on every body change; onSelect(id) fires after the user settles on a body. */
+export function renderBodyTabs(activeId, onSelect) {
+  if (!selector) buildSelector();
+  selector.onSelect = (id) => { if (id !== activeId) onSelect(id); };
+  clearTimeout(selector.timer); // an external change wins over a pending step
+  selector.show(selector.bodies.findIndex((b) => b.id === activeId));
 }
 
-/** Turn the carousel one step (dir = -1 | 1); switches body once it settles. */
-export function stepBody(dir) { if (carousel) carousel.step(dir); }
+/** Step the selector (dir = -1 | 1). */
+export function stepBody(dir) { if (selector) selector.step(dir); }
 
 export function renderFilters(bodyId, active, onChange) {
   const row = $('filter-row');
@@ -241,6 +137,84 @@ export function renderImagery(bodyId, online, activeLayerId, onSelect) {
 const fmtLat = (v) => `${Math.abs(v).toFixed(2)}° ${v >= 0 ? 'N' : 'S'}`;
 const fmtLon = (v) => `${Math.abs(v).toFixed(2)}° ${v >= 0 ? 'E' : 'W'}`;
 
+/* ------------------------------------------------------------------------ *
+ *  Simple / Detailed view and collapsible content
+ *
+ *  Simple view (default) shows headline scores and plain-language
+ *  explanations; numbers, tables and data notes sit in collapsed sections.
+ *  Detailed view opens them. Anything the user opens or closes is
+ *  remembered (per browser) until they switch view again.
+ * ------------------------------------------------------------------------ */
+const PREFS_KEY = 'analog-atlas-ui';
+const prefs = (() => {
+  const d = { simple: true, sections: {}, panels: {} };
+  try { return { ...d, ...JSON.parse(localStorage.getItem(PREFS_KEY) || '{}') }; } catch { return d; }
+})();
+const savePrefs = () => { try { localStorage.setItem(PREFS_KEY, JSON.stringify(prefs)); } catch { /* storage blocked */ } };
+
+export const isSimple = () => prefs.simple;
+
+/** Switch view; resets remembered open/closed state to that view's defaults. */
+export function setSimple(on) {
+  prefs.simple = on;
+  prefs.sections = {};
+  prefs.panels = {};
+  savePrefs();
+  applyViewMode();
+}
+
+const collapsibles = []; // { panel, key, simpleCollapsed }
+
+export function applyViewMode() {
+  document.body.classList.toggle('simple', prefs.simple);
+  const btn = $('btn-detail');
+  if (btn) {
+    btn.setAttribute('aria-pressed', String(!prefs.simple));
+    btn.querySelector('.mode-label').textContent = prefs.simple ? 'SIMPLE VIEW' : 'DETAILED VIEW';
+  }
+  collapsibles.forEach(applyPanel);
+}
+
+/** Give a .panel a collapse toggle in its head. */
+export function makeCollapsible(panel, key, { simpleCollapsed = false } = {}) {
+  const head = panel.querySelector('.panel-head');
+  const btn = document.createElement('button');
+  btn.className = 'collapse-btn';
+  btn.setAttribute('aria-label', 'Show or hide');
+  head.appendChild(btn);
+  const c = { panel, key, simpleCollapsed, btn };
+  head.addEventListener('click', (e) => {
+    if (e.target.closest('button') && e.target !== btn) return;
+    prefs.panels[key] = !panel.classList.contains('collapsed');
+    savePrefs();
+    applyPanel(c);
+  });
+  collapsibles.push(c);
+  applyPanel(c);
+}
+
+function applyPanel(c) {
+  const collapsed = prefs.panels[c.key] ?? (prefs.simple ? c.simpleCollapsed : false);
+  c.panel.classList.toggle('collapsed', collapsed);
+  c.btn.setAttribute('aria-expanded', String(!collapsed));
+  c.btn.textContent = collapsed ? '▸' : '▾';
+}
+
+/** A collapsible section inside a panel. open = { simple, detailed } defaults. */
+function section(key, title, inner, open = { simple: false, detailed: true }) {
+  const isOpen = prefs.sections[key] ?? (prefs.simple ? open.simple : open.detailed);
+  return `<details class="sec" data-sec="${key}" ${isOpen ? 'open' : ''}><summary>${title}</summary><div class="sec-body">${inner}</div></details>`;
+}
+function bindSections(el) {
+  el.querySelectorAll('details.sec').forEach((d) => d.addEventListener('toggle', () => {
+    prefs.sections[d.dataset.sec] = d.open;
+    savePrefs();
+  }));
+}
+
+/* ------------------------------------------------------------------------ *
+ *  Site briefing
+ * ------------------------------------------------------------------------ */
 /**
  * Briefing panel. `links` = [{ site, label }] — cross-planet jumps.
  * onJump(site) is called when a link is clicked.
@@ -272,20 +246,24 @@ export function showBriefing(site, { links = [], onClose, onJump } = {}) {
       <div class="brief-kicker">${kicker}</div>
       <div class="brief-title">${esc(site.name)}</div>
       <div class="brief-region">${esc(site.region)}</div>
-      <div class="coords">${fmtLat(site.lat)} · ${fmtLon(site.lon)} · ${esc(site.environment)}</div>
+      <div class="coords detail-only">${fmtLat(site.lat)} · ${fmtLon(site.lon)} · ${esc(site.environment)}</div>
       <button class="brief-close" aria-label="Close briefing">✕</button>
     </div>
     <div class="brief-body">
       <p>${esc(site.summary)}</p>
-      ${isEarth ? `<h4>WHERE IT MATCHES</h4>${list(site.strengths)}<h4>WHERE IT BREAKS DOWN</h4>${list(site.limits)}` : ''}
+      ${isEarth ? section('site-match', 'WHERE IT MATCHES · WHERE IT BREAKS DOWN',
+        `<h4>WHERE IT MATCHES</h4>${list(site.strengths)}<h4>WHERE IT BREAKS DOWN</h4>${list(site.limits)}`, { simple: true, detailed: true }) : ''}
       <h4>${isEarth ? 'LINKED TARGETS' : 'EARTH ANALOGS'}</h4>
       <div class="jumps">${linkHtml}</div>
-      <h4>SIMILARITY METRICS</h4>${rows}
-      ${scored ? '' : '<div class="placeholder-note">Scores pending — to be computed from NASA Earth, Moon and Mars datasets.</div>'}
-      ${(site.datasets || []).length ? `<h4>SOURCES</h4><ul>${site.datasets.map((d) => `<li><a href="${esc(d.url)}" target="_blank" rel="noopener">${esc(d.name)}</a></li>`).join('')}</ul>` : ''}
+      ${section('site-metrics', 'SIMILARITY METRICS', rows +
+        (scored ? '' : '<div class="placeholder-note">Scores pending — to be computed from NASA Earth, Moon and Mars datasets.</div>'))}
+      ${(site.datasets || []).length ? section('site-sources', 'SOURCES',
+        `<ul>${site.datasets.map((d) => `<li><a href="${esc(d.url)}" target="_blank" rel="noopener">${esc(d.name)}</a></li>`).join('')}</ul>`) : ''}
+      <p class="hint-line">Tip: click any bare ground on the globe to score that exact spot.</p>
     </div>`;
   el.querySelector('.brief-close').addEventListener('click', onClose);
   el.querySelectorAll('.jump').forEach((b) => b.addEventListener('click', () => onJump(links[+b.dataset.i].site)));
+  bindSections(el);
   el.classList.remove('hidden');
 }
 
@@ -301,3 +279,101 @@ export function updateAltitude(rangeM) {
 }
 
 export function setCredit(text) { $('credit').textContent = text; }
+
+/* ------------------------------------------------------------------------ *
+ *  Point-probe panel (shares the right-hand slot with the site briefing)
+ * ------------------------------------------------------------------------ */
+const pct = (s) => (s == null ? '—' : Math.round(s * 100));
+const fmtVal = (m, v) => (v == null ? '—' : `${v.toFixed(m.digits)}${m.unit ? ' ' + m.unit : ''}`);
+
+/**
+ * result = analysis.analysePoint(...) output, or null to hide.
+ * explanations = { [targetBodyId]: explain.explainMatch(...) }
+ * handlers: onScale(scaleId), onClose(), onViewMatch(targetBodyId), onZoomArea()
+ */
+export function showProbe(result, explanations, { onScale, onClose, onViewMatch, onZoomArea } = {}) {
+  const el = $('site-detail');
+  if (!result) { el.classList.add('hidden'); return; }
+  const body = BODIES[result.body];
+  const scale = SCALES[result.scale];
+  const targets = Object.keys(result.matches);
+  const simple = prefs.simple;
+
+  const cards = targets.map((t) => {
+    const m = result.matches[t];
+    const x = explanations[t];
+    const p = pct(m.score);
+    const why = `
+      <p class="why-head">${esc(x.headline)}</p>
+      ${x.good.length ? `<ul class="why good">${x.good.map((g) => `<li>${esc(g.text)}</li>`).join('')}</ul>` : ''}
+      ${x.gaps.length ? `<ul class="why gap">${x.gaps.map((g) => `<li>${esc(g.text)}</li>`).join('')}</ul>` : ''}
+      <button class="mini-btn view-match" data-target="${t}">GO TO THIS SPOT ON ${BODIES[t].label} ▸</button>`;
+    return `<div class="score-card" data-target="${t}">
+        <div class="score-top">
+          <div class="dial" style="--p:${p}"><span>${p}<small>%</small></span></div>
+          <div class="score-info">
+            <div class="score-target">vs ${BODIES[t].label}</div>
+            <div class="tier ${x.tier.id}">${x.tier.label}</div>
+            <div class="score-summary">${esc(x.summary)}</div>
+          </div>
+        </div>
+        ${section(`why-${t}`, `WHY · WHAT YOU COULD TEST`, why, { simple: true, detailed: true })}
+      </div>`;
+  }).join('');
+
+  const rows = METRICS.map((m) => {
+    const sim = result.simulated[m.key];
+    const bar = (t) => {
+      const s = result.matches[t].parts[m.key];
+      return `<div class="mbar" style="--tc:var(--${t})" title="${BODIES[t].label}: ${pct(s)}% (best-match value ${fmtVal(m, result.matches[t].values[m.key])})"><span style="width:${pct(s) === '—' ? 0 : pct(s)}%"></span></div>`;
+    };
+    return `<tr title="${esc(m.label)} · planned source: ${esc(m.sources[result.body] || '—')}">
+        <td>${esc(simple ? m.plain : m.label)}${sim ? '<span class="sim">SIM</span>' : ''}</td>
+        <td class="num">${fmtVal(m, result.values[m.key])}</td>
+        ${targets.map((t) => `<td>${bar(t)}</td>`).join('')}
+      </tr>`;
+  }).join('');
+  const table = `<table class="metric-table">
+      <thead><tr><th>${simple ? 'What' : 'Metric'}</th><th class="num">Here</th>${targets.map((t) => `<th>${BODIES[t].label.charAt(0) + BODIES[t].label.slice(1).toLowerCase()}</th>`).join('')}</tr></thead>
+      <tbody>${rows}</tbody></table>
+      <p class="hint-line">Bars show how closely each one matches the best spot on that body.</p>`;
+
+  const allBodies = [result.body, ...targets];
+  const facts = `<table class="metric-table facts">
+      <thead><tr><th></th>${allBodies.map((b) => `<th>${b === result.body ? 'Here' : BODIES[b].label.charAt(0) + BODIES[b].label.slice(1).toLowerCase()}</th>`).join('')}</tr></thead>
+      <tbody>${BODY_FACTS.map((f) => `<tr title="${esc(f.why)}"><td>${esc(f.label)}</td>${allBodies.map((b) => `<td>${esc(f[b])}</td>`).join('')}</tr>`).join('')}</tbody>
+    </table>
+    <p class="hint-line">These differ for the whole body, so no single spot can match them. Hover a row for why it matters.</p>`;
+
+  const sources = `${result.anySimulated ? `<div class="placeholder-note">The numbers are placeholders from a simple model, not real measurements yet. Each will be replaced by the NASA dataset listed here (see <code>js/analysis.js</code> → <code>registerGrid</code>).</div>` : ''}
+    <table class="metric-table small"><thead><tr><th>Metric</th><th>Earth</th><th>Moon</th><th>Mars</th></tr></thead>
+    <tbody>${METRICS.map((m) => `<tr><td>${esc(m.label)}</td><td>${esc(m.sources.earth)}</td><td>${esc(m.sources.moon)}</td><td>${esc(m.sources.mars)}</td></tr>`).join('')}</tbody></table>
+    <p class="hint-line">Score per metric = 1 − |difference| / range, then a weighted average (weights depend on Human / Rover).</p>`;
+
+  el.innerHTML = `
+    <div class="brief-head">
+      <div class="brief-kicker">POINT PROBE · ${body.label}${result.anySimulated ? ' <span class="sim big" title="Values are placeholders until real NASA data is connected">SAMPLE DATA</span>' : ''}</div>
+      <div class="brief-title">${fmtLat(result.lat)} · ${fmtLon(result.lon)}</div>
+      <div class="brief-region">How well this spot matches ${targets.map((t) => ({ earth: 'Earth', moon: 'the Moon', mars: 'Mars' }[t] || BODIES[t].label)).join(' and ')}</div>
+      <button class="brief-close" aria-label="Close probe">✕</button>
+    </div>
+    <div class="brief-body">
+      <div class="seg" role="radiogroup" aria-label="Mission type">
+        ${Object.values(SCALES).map((s) => `<button role="radio" data-scale="${s.id}" aria-checked="${s.id === result.scale}">${s.label}</button>`).join('')}
+      </div>
+      <p class="scale-note">${esc(scale.note)} <span class="key">V</span></p>
+      ${result.onLand ? '' : '<div class="layer-warn">This point is in the ocean. Scores assume dry land, so treat them with care.</div>'}
+      <div class="score-cards">${cards}</div>
+      <button class="mini-btn wide zoom-area">ZOOM TO ${scale.label} OPERATING AREA</button>
+      ${section('probe-metrics', 'MEASUREMENTS', table)}
+      ${section('probe-facts', 'WHAT NO SPOT CAN MATCH', facts)}
+      ${section('probe-data', 'ABOUT THIS DATA', sources, { simple: false, detailed: false })}
+    </div>`;
+
+  el.querySelector('.brief-close').addEventListener('click', onClose);
+  el.querySelectorAll('.seg button').forEach((b) => b.addEventListener('click', () => onScale(b.dataset.scale)));
+  el.querySelectorAll('.view-match').forEach((b) => b.addEventListener('click', () => onViewMatch(b.dataset.target)));
+  el.querySelector('.zoom-area').addEventListener('click', onZoomArea);
+  bindSections(el);
+  el.classList.remove('hidden');
+}
