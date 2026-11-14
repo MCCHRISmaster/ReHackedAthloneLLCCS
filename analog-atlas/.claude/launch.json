@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "atlas",
+      "runtimeExecutable": "powershell",
+      "runtimeArgs": ["-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "C:\\Users\\flynn\\AppData\\Local\\Temp\\claude\\0e479ea2bf12fb8a\\c79e0612-3900-466f-b00d-bfb77ac05450\\scratchpad\\serve.ps1", "-Root", "C:\\Users\\flynn\\Downloads\\analog-atlas\\analog-atlas", "-Port", "8000"],
+      "port": 8000
+    }
+  ]
+}

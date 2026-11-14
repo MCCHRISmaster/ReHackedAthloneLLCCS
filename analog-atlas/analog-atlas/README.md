@@ -13,7 +13,8 @@ WorldWind needs a web server (browsers block WebGL textures from `file://`):
 
 ## Controls
 Drag = spin · scroll/pinch = zoom · right-drag = tilt · click marker = briefing
-Keys: `1` Earth, `2` Moon, `3` Mars, `T` Tactical view, `+`/`-` zoom, `R` auto-rotate, `H` home, `Esc` close briefing.
+Planet select is a carousel at the bottom centre: ◀ / ▶, click a side planet, or `Q` / `E` to rotate it.
+Keys: `Q`/`E` previous/next planet, `1` Earth, `2` Moon, `3` Mars, `T` Tactical view, `+`/`-` zoom, `R` auto-rotate, `H` home, `Esc` close briefing.
 Briefings link Moon/Mars targets to their Earth analogs (and back) — click one to jump planets.
 
 ## Layout

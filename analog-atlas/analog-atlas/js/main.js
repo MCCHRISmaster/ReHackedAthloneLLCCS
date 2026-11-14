@@ -64,7 +64,7 @@ function setBody(bodyId, thenSelect = null) {
   state.basemap[bodyId] ||= BODIES[bodyId].defaultLayer;
   globe.setBody(bodyId);
   if (state.online) globe.setBasemap(state.basemap[bodyId]);
-  ui.renderBodyTabs(bodyId, (id) => setBody(id));
+  ui.renderBodyTabs(bodyId, (id) => setBody(id), { online: state.online });
   document.body.dataset.body = bodyId;
   refreshImagery();
   refreshSites();
@@ -113,6 +113,8 @@ function bindControls() {
     else if (k === 't') setTactical(!state.tactical);
     else if (k === 'h') $('btn-reset').click();
     else if (k === 'escape') selectSite(null);
+    else if (k === 'q') ui.stepBody(-1);
+    else if (k === 'e') ui.stepBody(1);
     else if (k === '1') setBody('earth');
     else if (k === '2') setBody('moon');
     else if (k === '3') setBody('mars');
