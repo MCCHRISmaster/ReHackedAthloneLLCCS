@@ -24,7 +24,6 @@
       </div>
     </div>
     <div class="top-center">
-      <nav class="body-tabs" id="body-tabs" aria-label="Planetary body"></nav>
       <button class="mode-toggle" id="btn-tactical" aria-pressed="false" title="Toggle Tactical view (T)">
         <span class="mode-dot"></span>TACTICAL
       </button>
@@ -53,6 +52,9 @@
     </aside>
   </div>
 
+  <!-- Planet select carousel (built by ui.renderBodyTabs) -->
+  <nav class="planet-select" id="planet-select" aria-label="Planetary body"></nav>
+
   <aside class="hud-right panel hidden" id="site-detail" aria-live="polite"></aside>
 
   <div class="hud-controls" role="toolbar" aria-label="Globe controls">
@@ -67,7 +69,7 @@
     <div class="readout"><span class="lbl">LON</span><span id="ro-lon">—</span></div>
     <div class="readout"><span class="lbl">ALT</span><span id="ro-alt">—</span></div>
     <div class="readout readout-temp"><span class="lbl">TEMP</span><span id="ro-temp">—</span></div>
-    <div class="hint">CLICK EARTH = SET TEMPERATURE · DRAG SPIN · SCROLL ZOOM · 1/2/3 BODY · T TACTICAL</div>
+    <div class="hint">CLICK EARTH = SET TEMPERATURE · DRAG SPIN · SCROLL ZOOM · Q/E · 1/2/3 BODY · T TACTICAL</div>
     <div class="credit" id="credit"></div>
   </footer>
 

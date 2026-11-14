@@ -40,17 +40,88 @@ html, body { margin: 0; height: 100%; overflow: hidden; background: var(--bg); c
 .brand-title { font-weight: 700; font-size: 22px; letter-spacing: 0.18em; }
 .brand-sub { font-family: var(--font-mono); font-size: 10px; color: var(--muted); letter-spacing: 0.12em; }
 
-.body-tabs { display: flex; gap: 6px; }
-.body-tab {
-  font-family: var(--font-ui); font-weight: 700; font-size: 15px; letter-spacing: 0.16em;
-  color: var(--text); background: var(--panel); border: 1px solid var(--panel-edge);
-  padding: 8px 18px; cursor: pointer;
-  clip-path: polygon(10px 0, 100% 0, calc(100% - 10px) 100%, 0 100%);
-  transition: background .15s, color .15s;
+/* ---------- Planet select carousel ---------- */
+.planet-select {
+  position: fixed; left: 50%; bottom: 50px; transform: translateX(-50%);
+  width: 400px; height: 176px; pointer-events: none; user-select: none;
 }
-.body-tab:hover:not(:disabled) { background: rgba(255,214,0,0.12); }
-.body-tab[aria-selected="true"] { background: var(--accent); color: #000; border-color: var(--accent); }
-.body-tab:disabled { opacity: 0.45; cursor: not-allowed; }
+.ps-stage { position: absolute; left: 0; right: 0; top: 0; height: 130px; }
+/* the ring planets travel on, seen at an angle */
+.ps-orbit {
+  position: absolute; left: 50%; top: 58%; width: 260px; height: 46px; transform: translate(-50%, -50%);
+  border: 1px dashed var(--panel-edge); border-radius: 50%;
+}
+/* landing pad under the front planet */
+.ps-pad {
+  position: absolute; left: 50%; top: 92%; width: 120px; height: 16px; transform: translate(-50%, -50%);
+  border-radius: 50%; border: 2px solid var(--accent);
+  background: radial-gradient(ellipse, color-mix(in srgb, var(--accent) 35%, transparent), transparent 70%);
+  box-shadow: 0 0 14px var(--accent-dim); transition: border-color .4s, box-shadow .4s;
+}
+.ps-planet {
+  position: absolute; left: 50%; top: 50%; width: 104px; height: 104px; padding: 0;
+  border: 0; background: none; border-radius: 50%; cursor: pointer; pointer-events: auto;
+  will-change: transform;
+}
+.ps-planet.front { cursor: default; }
+.ps-planet:focus-visible { outline: 2px solid var(--accent); outline-offset: 6px; }
+.ps-sphere {
+  position: absolute; inset: 0; border-radius: 50%; overflow: hidden; display: block;
+  background: var(--base, #444);
+  box-shadow: inset -10px -12px 26px rgba(0,0,0,0.75), inset 4px 4px 10px rgba(255,255,255,0.12);
+  transition: box-shadow .4s;
+}
+.ps-planet.front .ps-sphere { box-shadow: inset -10px -12px 26px rgba(0,0,0,0.75), 0 0 22px var(--accent-dim); }
+.ps-planet[data-body="earth"].front .ps-sphere { box-shadow: inset -10px -12px 26px rgba(0,0,0,0.7), 0 0 22px rgba(79,195,247,0.55); }
+.ps-planet:not(.front):hover .ps-sphere { box-shadow: inset -10px -12px 26px rgba(0,0,0,0.75), 0 0 0 3px var(--accent); }
+
+/* surface strip holds two copies of the map; sliding it by half loops forever */
+.ps-surface {
+  position: absolute; top: 0; left: 0; height: 100%; width: 400%; display: flex;
+  animation: ps-spin 48s linear infinite;
+}
+.ps-surface img { height: 100%; flex: none; display: block; }
+.ps-surface.failed img { display: none; }
+@keyframes ps-spin { to { transform: translateX(-50%); } }
+/* no imagery (offline Moon/Mars): procedural craters / dark regions */
+.ps-surface.procedural, .ps-surface.failed { animation: none; width: 100%; }
+.ps-planet[data-body="moon"] .ps-surface.procedural, .ps-planet[data-body="moon"] .ps-surface.failed {
+  background:
+    radial-gradient(circle at 30% 35%, rgba(40,40,44,0.55) 0 14%, transparent 15%),
+    radial-gradient(circle at 55% 55%, rgba(40,40,44,0.45) 0 10%, transparent 11%),
+    radial-gradient(circle at 62% 28%, rgba(255,255,255,0.18) 0 5%, transparent 6%),
+    radial-gradient(circle at 40% 72%, rgba(255,255,255,0.15) 0 4%, transparent 5%),
+    #9a9c9e;
+}
+.ps-planet[data-body="mars"] .ps-surface.procedural, .ps-planet[data-body="mars"] .ps-surface.failed {
+  background:
+    radial-gradient(ellipse 40% 14% at 50% 6%, rgba(255,240,230,0.7), transparent 100%),
+    radial-gradient(ellipse 30% 10% at 45% 48%, rgba(60,20,10,0.55), transparent 100%),
+    radial-gradient(circle at 68% 62%, rgba(70,25,12,0.45) 0 12%, transparent 13%),
+    #b5532e;
+}
+/* terminator shading + highlight on top of the map */
+.ps-shade {
+  position: absolute; inset: 0; border-radius: 50%; display: block; pointer-events: none;
+  background:
+    radial-gradient(circle at 34% 30%, rgba(255,255,255,0.22), transparent 38%),
+    radial-gradient(circle at 38% 36%, transparent 42%, rgba(0,0,0,0.55) 68%, rgba(0,0,0,0.9) 100%);
+}
+
+.ps-arrow {
+  position: absolute; top: 44px; width: 34px; height: 42px; pointer-events: auto; cursor: pointer;
+  font-size: 14px; color: var(--text); background: var(--panel); border: 1px solid var(--panel-edge);
+  transition: background .15s, color .15s, border-color .15s;
+}
+.ps-arrow.prev { left: 0; clip-path: polygon(10px 0, 100% 0, 100% 100%, 10px 100%, 0 50%); padding-left: 10px; }
+.ps-arrow.next { right: 0; clip-path: polygon(0 0, calc(100% - 10px) 0, 100% 50%, calc(100% - 10px) 100%, 0 100%); padding-right: 10px; }
+.ps-arrow:hover { background: var(--accent); color: #000; border-color: var(--accent); }
+.ps-arrow:active { transform: scale(0.94); }
+
+.ps-label { position: absolute; left: 0; right: 0; bottom: 0; text-align: center; display: flex; flex-direction: column; }
+.ps-kicker { font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.16em; color: var(--muted); }
+.ps-name { font-weight: 700; font-size: 22px; letter-spacing: 0.3em; padding-left: 0.3em; color: var(--accent); text-shadow: 0 0 12px var(--accent-dim); transition: color .4s; }
+@media (prefers-reduced-motion: reduce) { .ps-surface { animation: none; } }
 
 .status { font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.1em; color: var(--muted); display: flex; align-items: center; gap: 8px; }
 .status-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 8px var(--accent); animation: pulse 1.6s infinite; }
@@ -158,7 +229,7 @@ html, body { margin: 0; height: 100%; overflow: hidden; background: var(--bg); c
   .hud-right { width: calc(100vw - 40px); top: 72px; max-height: 45vh; }
   .hud-controls { bottom: calc(30vh + 72px); }
   .brand-sub, .hint, .credit, .status { display: none; }
-  .body-tab { padding: 6px 10px; font-size: 13px; }
+  .planet-select { bottom: auto; top: 54px; transform: translateX(-50%) scale(0.72); transform-origin: top center; }
 }
 
 /* Keep zoom controls clear of the briefing panel when it is open */
@@ -171,8 +242,6 @@ html, body { margin: 0; height: 100%; overflow: hidden; background: var(--bg); c
 /* ---------- Body theming: accent shifts per planet ---------- */
 body[data-body="moon"] { --accent: #e3e8ea; --accent-dim: rgba(227,232,234,0.55); --panel-edge: rgba(227,232,234,0.35); }
 body[data-body="mars"] { --accent: #ff7043; --accent-dim: rgba(255,112,67,0.55); --panel-edge: rgba(255,112,67,0.4); }
-.body-tab[data-body="moon"][aria-selected="true"] { background: #e3e8ea; border-color: #e3e8ea; }
-.body-tab[data-body="mars"][aria-selected="true"] { background: #ff7043; border-color: #ff7043; }
 
 .filter-note { font-family: var(--font-mono); font-size: 10px; color: var(--muted); letter-spacing: 0.06em; }
 .tag.target { background: #4fc3f7; }
