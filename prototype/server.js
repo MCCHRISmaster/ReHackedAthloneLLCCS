@@ -1,11 +1,12 @@
 // Minimal static file server for the prototype (no dependencies).
-// Usage: node server.js   then open http://localhost:8000
+// Usage: node server.js [folder]   then open http://localhost:8000
+// The folder defaults to this one (the prototype). Pass the repo root to serve heatmap/ too.
 const http = require("http");
 const fs = require("fs");
 const path = require("path");
 
-const ROOT = __dirname;
-const PORT = Number(process.env.PORT) || 8000;
+const ROOT = path.resolve(process.argv[2] || __dirname);
+const PORT = Number(process.argv[3] || process.env.PORT) || 8000;
 const TYPES = {
   ".html": "text/html; charset=utf-8",
   ".js": "text/javascript; charset=utf-8",
@@ -13,6 +14,8 @@ const TYPES = {
   ".json": "application/json",
   ".jpg": "image/jpeg",
   ".png": "image/png",
+  ".csv": "text/csv; charset=utf-8",
+  ".md": "text/markdown; charset=utf-8",
 };
 
 http.createServer((req, res) => {

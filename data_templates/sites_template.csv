@@ -1,0 +1,5 @@
+site_id,name,body,lat,lon,site_type,temp_mean_c,temp_high_c,temp_low_c,elevation_m,notes,source_id
+haughton_crater,Haughton Crater,earth,75.38,-89.68,known_analog,-15.3,1.8,-35.5,190,Impact crater; Arctic polar desert,nasa_power_clim
+lut_desert,Lut Desert,earth,30.42,58.32,candidate_analog,27.4,53.2,6.9,330,Hottest land surface temps measured by satellite,nasa_power_clim
+shackleton_crater,Shackleton Crater,moon,-89.67,129.78,mission_site,,,,1900,Near-constant sunlight on rim; Artemis interest,diviner_2017
+jezero,Jezero Crater,mars,18.38,77.58,mission_site,,,,-2600,Perseverance landing site; ancient lake delta,mcd_v6

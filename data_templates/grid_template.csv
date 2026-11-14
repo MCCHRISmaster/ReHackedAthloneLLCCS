@@ -1,0 +1,6 @@
+body,lat,lon,temp_mean_c,temp_high_c,temp_low_c,elevation_m,slope_deg,water_ice_pct,source_id
+moon,89,-179,-213.4,-160.2,-240.1,1830,6.2,4.1,diviner_2017
+moon,89,-177,-212.9,-158.7,-239.8,1795,5.9,3.8,diviner_2017
+moon,1,-23,-63.5,118.9,-178.3,-1720,1.4,,diviner_2017
+moon,-1,-23,-63.8,118.6,-178.5,-1735,1.6,,diviner_2017
+moon,-89,179,-219.0,-171.5,-243.6,-2410,9.8,6.7,diviner_2017

@@ -88,10 +88,11 @@ def mars_grid(albedo):
     shade = 40 * (0.2 - albedo)                    # darker ground runs warmer
     mean = 215 - 65 * np.sin(lat) ** 2 + shade
     swing = np.cos(lat)
-    high = mean + 60 * swing + shade
+    high = mean + 60 * swing
     low = mean - 40 * swing
     floor = 148
-    return (np.maximum(mean, floor), np.maximum(high, floor), np.maximum(low, floor))
+    mean, high, low = (np.maximum(a, floor) for a in (mean, high, low))
+    return mean, np.maximum(high, mean), np.minimum(low, mean)
 
 
 def save_grid(path, mean, high, low):

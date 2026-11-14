@@ -1,0 +1,4 @@
+source_id,body,dataset,variables,original_units,resolution,url,downloaded_on,processing_notes
+nasa_power_clim,earth,NASA POWER climatology (TS TS_MAX TS_MIN),temp_mean_c;temp_high_c;temp_low_c,C,0.5 x 0.625 deg,https://power.larc.nasa.gov/,2026-11-13,ANN for mean; average of 12 monthly TS_MAX / TS_MIN for high / low
+diviner_2017,moon,LRO Diviner global surface temperature,temp_mean_c;temp_high_c;temp_low_c,K,0.5 deg,https://pds-geosciences.wustl.edu/,YYYY-MM-DD,Converted K to C (minus 273.15); block-averaged 0.5 deg cells to 2 deg
+mcd_v6,mars,Mars Climate Database v6 surface temperature,temp_mean_c;temp_high_c;temp_low_c,K,5.625 x 3.75 deg,https://www-mars.lmd.jussieu.fr/,YYYY-MM-DD,Annual average over all seasons; high / low = mean daily max / min; interpolated to 2 deg

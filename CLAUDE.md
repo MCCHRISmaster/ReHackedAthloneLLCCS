@@ -45,6 +45,17 @@ landing sites, and present the result as a map, visualization or tool. The brief
   - Mars: **Mars Climate Database** (needs free registration) or NASA Ames Mars climate model output
 - The app needs no other changes when the files are replaced.
 
+### `data_templates/`: CSV formats for gathering data
+- `DATA_FORMAT.md` sets the rules: 2° grid cell centres, °C, surface temperature, lon −180..180, empty for unknown.
+- Templates: `grid_template.csv` (whole-planet grids), `sites_template.csv` (single places), `sources_template.csv` (where the data came from).
+- `python prototype/tools/csv_to_grid.py <file.csv> [--check]` validates a grid CSV and writes `prototype/grids/<body>.json` for the app.
+
+### `heatmap/`: Temperature Match Grid (basic CSV-driven heat map)
+- Loads grid CSVs (template format) and draws the Moon and Mars as 2° cells, from green (100% match) to red (0%), with grid lines and lat/lon labels.
+- Earth temperature comes from a site dropdown (sites CSV) or typed in.
+- Run with `node prototype/server.js . 8001` from the repo root, then open http://localhost:8001/heatmap/.
+- `heatmap/samples/*_grid_sample.csv` are full 16,200-row grids exported from the placeholder model.
+
 ### `data/` and `load_temps.py`
 - 2023 daily NASA POWER temperatures (`T2M`, `T2M_MAX`, `T2M_MIN`, `TS`) as CSV and JSON for:
   - Atacama (Yungay)

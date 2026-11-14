@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Temperature Match Grid</title>
+  <style>
+    :root { --bg:#0f1115; --panel:#171a21; --line:#2a2f3a; --text:#e7e9ee; --muted:#9097a6; --accent:#4fb37a; }
+    * { box-sizing: border-box; }
+    body { margin: 0 auto; max-width: 1200px; padding: 20px 16px 40px; background: var(--bg); color: var(--text);
+           font: 15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; }
+    h1 { margin: 0; font-size: 24px; font-weight: 600; }
+    h2 { margin: 0; font-size: 17px; font-weight: 600; }
+    .sub { margin: 4px 0 16px; color: var(--muted); }
+    .card { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; }
+    .controls { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 12px; }
+    label, .label { display: block; color: var(--muted); font-size: 12px; margin: 0 0 4px; }
+    select, input[type=number] { width: 100%; padding: 6px 8px; border-radius: 6px; border: 1px solid var(--line);
+           background: #0f1218; color: var(--text); font: inherit; }
+    input[type=range] { width: 100%; accent-color: var(--accent); }
+    input[type=file] { font-size: 12px; color: var(--muted); max-width: 100%; }
+    .row { display: flex; gap: 8px; align-items: center; }
+    .check { display: flex; gap: 6px; align-items: center; font-size: 13px; color: var(--text); margin-top: 6px; }
+    .legend { height: 14px; border-radius: 4px; border: 1px solid var(--line);
+              background: linear-gradient(90deg, #d73027, #fc8d59, #fee08b, #91cf60, #1a9850); }
+    .ticks { display: flex; justify-content: space-between; color: var(--muted); font-size: 12px; }
+    .maps { display: grid; gap: 12px; }
+    .head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; margin-bottom: 8px; }
+    .readout, .info, .stats { color: var(--muted); font-size: 13px; font-variant-numeric: tabular-nums; }
+    .stats b { color: var(--text); }
+    .err { color: #ff8a8a; }
+    canvas { display: block; width: 100%; height: auto; }
+    .drop { outline: 2px dashed var(--accent); outline-offset: -6px; }
+    @media (max-width: 900px) { .controls { grid-template-columns: 1fr 1fr; } }
+    @media (max-width: 560px) { .controls { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <h1>Temperature Match Grid</h1>
+  <p class="sub">Load Moon and Mars grid CSVs, set an Earth temperature, and every 2° cell is coloured by how close it is: green = same, red = far apart.</p>
+
+  <section class="controls">
+    <div class="card">
+      <label for="site">Earth site (from sites CSV)</label>
+      <select id="site"><option value="">Custom temperature</option></select>
+      <label for="sites-file" style="margin-top:8px">Load a different sites CSV</label>
+      <input type="file" id="sites-file" accept=".csv">
+    </div>
+    <div class="card">
+      <label for="stat">Compare</label>
+      <select id="stat">
+        <option value="mean">Average (temp_mean_c)</option>
+        <option value="high">Daily high (temp_high_c)</option>
+        <option value="low">Daily low (temp_low_c)</option>
+      </select>
+      <label for="earth-temp" style="margin-top:8px">Earth temperature (°C)</label>
+      <input type="number" id="earth-temp" step="0.1" value="-15.3">
+    </div>
+    <div class="card">
+      <label for="range">0% match at a difference of <b id="range-val">40</b> °C</label>
+      <input type="range" id="range" min="5" max="200" step="5" value="40">
+      <label for="opacity" style="margin-top:8px">Grid opacity</label>
+      <input type="range" id="opacity" min="20" max="100" value="100">
+    </div>
+    <div class="card">
+      <div class="label">Match</div>
+      <div class="legend"></div>
+      <div class="ticks"><span>0%</span><span>50%</span><span>100%</span></div>
+      <label class="check"><input type="checkbox" id="photo"> Show surface photo underneath</label>
+      <label class="check"><input type="checkbox" id="lines" checked> Show cell grid lines</label>
+    </div>
+  </section>
+
+  <section class="maps">
+    <div class="card" data-body="moon">
+      <div class="head">
+        <h2>Moon</h2>
+        <span class="readout" id="moon-readout"></span>
+      </div>
+      <canvas id="moon-canvas"></canvas>
+      <div class="row" style="justify-content:space-between;margin-top:8px;flex-wrap:wrap">
+        <span class="stats" id="moon-stats"></span>
+        <span class="info"><label for="moon-file" style="display:inline">Load CSV:</label> <input type="file" id="moon-file" accept=".csv"></span>
+      </div>
+      <div class="info" id="moon-info"></div>
+    </div>
+    <div class="card" data-body="mars">
+      <div class="head">
+        <h2>Mars</h2>
+        <span class="readout" id="mars-readout"></span>
+      </div>
+      <canvas id="mars-canvas"></canvas>
+      <div class="row" style="justify-content:space-between;margin-top:8px;flex-wrap:wrap">
+        <span class="stats" id="mars-stats"></span>
+        <span class="info"><label for="mars-file" style="display:inline">Load CSV:</label> <input type="file" id="mars-file" accept=".csv"></span>
+      </div>
+      <div class="info" id="mars-info"></div>
+    </div>
+  </section>
+
+  <script src="heatmap.js"></script>
+</body>
+</html>
