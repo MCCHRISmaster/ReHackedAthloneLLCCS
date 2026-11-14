@@ -11,6 +11,13 @@ Branches in the repo:
 
 `earth_grid.csv` is the piece needed for the planned reverse search (Moon/Mars → Earth).
 
+Local `main` (not yet pushed) has `heat-map` and `Graphical_Elements` merged in. `l_branch` is not merged yet.
+
+### `analog-atlas/analog-atlas/`: 3D globe (teammate, from `Graphical_Elements`)
+- NASA WebWorldWind globe with Earth/Moon/Mars tabs, analog site markers with briefings, NASA GIBS and Trek imagery layers, and a "Tactical" stylised view.
+- Site data is in `js/data/sites.js`. See its README.
+- Run: `node prototype/server.js analog-atlas/analog-atlas 8002`, then open http://localhost:8002.
+
 ## The challenge
 NASA Space Apps 2026: **"Permanent Moon Base Locations and Mars."** Use open NASA and other space-agency data
 to find and describe Earth places that are good stand-ins ("analogs") for candidate Moon-base and Mars
