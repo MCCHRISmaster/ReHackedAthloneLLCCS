@@ -26,4 +26,4 @@ to red (far apart). Hover over a cell to see its temperature and match %.
 - [`data/`](data/): 2023 daily temperatures from NASA POWER for five known analog sites, in both CSV and JSON.
 - [`load_temps.py`](load_temps.py): loads those files with pandas and prints a summary table.
 
-Team: Liam, Charlie, Christian.
+Team: Liam, Charlie, Christian, Louis, Stuart.
