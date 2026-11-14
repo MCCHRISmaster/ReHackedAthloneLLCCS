@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Analog Atlas live scoring</title>
+<style>
+  :root { --bg:#0b1020; --panel:#141b33; --line:#2a3560; --text:#e8ecf8; --mute:#9aa6c9; --accent:#5fd0ff; }
+  @media (prefers-color-scheme: light) { :root { --bg:#f4f6fb; --panel:#fff; --line:#d5dbee; --text:#162040; --mute:#5b678c; --accent:#0a6fb5; } }
+  body { margin:0; background:var(--bg); color:var(--text); font:15px/1.5 system-ui, "Segoe UI", sans-serif; }
+  main { max-width:900px; margin:0 auto; padding:16px; }
+  .card { background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:14px 16px; margin-bottom:12px; }
+  label { display:inline-block; margin:4px 12px 4px 0; color:var(--mute); font-size:13px; }
+  input, select, button { background:var(--bg); color:var(--text); border:1px solid var(--line); border-radius:8px; padding:6px 8px; font:inherit; }
+  input[type=number] { width:90px; } button { cursor:pointer; background:var(--accent); color:#06121f; font-weight:600; border-color:var(--accent); }
+  h1 { font-size:20px; margin:0 0 6px; } h2 { font-size:13px; letter-spacing:.08em; text-transform:uppercase; color:var(--accent); margin:0 0 6px; }
+  .big { font-size:44px; font-weight:700; } .mute { color:var(--mute); }
+  table { border-collapse:collapse; width:100%; } td, th { border-bottom:1px solid var(--line); padding:3px 6px; text-align:left; font-size:14px; }
+</style>
+</head>
+<body>
+<main>
+  <div class="card"><h1>Live scoring in the browser</h1>
+    <div class="mute">The same module the globe can use (<code>js/score.js</code>). Any Earth place against any Moon or Mars place, computed on this page from the CSV files.</div>
+    <p>
+      <label>Earth lat <input id="elat" type="number" step="0.01" value="53.42"></label>
+      <label>Earth lon <input id="elon" type="number" step="0.01" value="-7.91"></label>
+      <label>Target body <select id="body"><option value="mars">Mars</option><option value="moon">Moon</option></select></label>
+      <label>Target lat <input id="tlat" type="number" step="0.01" value="18.38"></label>
+      <label>Target lon <input id="tlon" type="number" step="0.01" value="77.58"></label>
+      <label>Preset <select id="preset"><option value="raw">Just similarities</option><option value="crewed">Crewed mission</option><option value="base">Base construction</option><option value="rover">Rover landing</option></select></label>
+      <button id="go">Score</button></p>
+    <div id="status" class="mute">Loading data…</div></div>
+  <div id="out"></div>
+</main>
+<script type="module">
+import { createScorer } from '../js/score.js';
+import { parseFeatureCSV, attachColumns } from '../js/features.js';
+const $ = (id) => document.getElementById(id);
+const get = async (p) => (await fetch(p)).text();
+const t0 = performance.now();
+const [features, presets, caveats, ranges] = await Promise.all(
+  ['../config/features.json', '../config/presets.json', '../config/caveats.json', '../out/feature_ranges.json'].map(async (p) => JSON.parse(await get(p))));
+const scorer = createScorer({ features, presets, caveats }, ranges.body_range_p99);
+const earth = parseFeatureCSV(await get('../out/earth_features_1deg.csv'));
+const tables = {};
+for (const [b, g] of [['moon', '../../moon_data/moon_grid.csv'], ['mars', '../../mars_data/mars_grid.csv']])
+  tables[b] = attachColumns(parseFeatureCSV(await get(`../out/${b}_features.csv`)), parseFeatureCSV(await get(g)));
+$('status').textContent = `Loaded in ${Math.round(performance.now() - t0)} ms: Earth ${earth.n} cells, Moon and Mars ${tables.mars.n} cells each.`;
+const esc = (s) => String(s).replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
+function run() {
+  const body = $('body').value, preset = $('preset').value;
+  const ei = earth.index(+$('elat').value, +$('elon').value), tb = tables[body], ti = tb.index(+$('tlat').value, +$('tlon').value);
+  const ref = scorer.refFromTable(earth, ei), target = scorer.refFromTable(tb, ti);
+  const t1 = performance.now();
+  const r = scorer.scorePair(ref, target, body, preset);
+  const rev = scorer.scoreGridReverse(target, earth, body, preset);
+  const t2 = performance.now();
+  const best = Array.from(rev).map((v, i) => [v, i]).filter(([v]) => !Number.isNaN(v)).sort((a, b) => b[0] - a[0]).slice(0, 5);
+  const ov = Number.isNaN(r.overall) ? 'no data' : Math.round(r.overall * 100);
+  $('out').innerHTML = `
+    <div class="card"><h2>Similarity</h2><div class="big">${ov}<span class="mute" style="font-size:18px"> / 100</span></div>
+      <div class="mute">Earth cell (${earth.lat[ei]}, ${earth.lon[ei]}) ${esc(earth.text.country?.[ei] || '')} against ${body} cell (${tb.lat[ti]}, ${tb.lon[ti]}). Computed in ${Math.round(t2 - t1)} ms, including a score for all ${earth.n} Earth cells.</div>
+      <table><tr><th>Dimension</th><th>Match</th><th>Data coverage</th></tr>${scorer.dims.map((d) => `<tr><td>${d}</td><td>${Number.isNaN(r.dims[d]) ? '—' : Math.round(r.dims[d] * 100)}</td><td>${Math.round(r.coverage[d] * 100)}%</td></tr>`).join('')}</table></div>
+    <div class="card"><h2>Costing the most points</h2><ul>${r.losses.map((l) => `<li>${esc(l.text)} (−${l.points})</li>`).join('')}</ul></div>
+    <div class="card"><h2>Best five Earth cells for this target</h2><ul>${best.map(([v, i]) => `<li>${esc(earth.text.country[i])} (${earth.lat[i]}, ${earth.lon[i]}): ${Math.round(v * 100)}</li>`).join('')}</ul></div>
+    <div class="card"><h2>Never scored</h2><ul>${r.caveats.map((c) => `<li>${esc(c)}</li>`).join('')}</ul></div>`;
+}
+$('go').addEventListener('click', run);
+run();
+</script>
+</body>
+</html>

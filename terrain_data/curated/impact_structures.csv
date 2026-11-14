@@ -1,0 +1,77 @@
+id,name,country_or_region,lat,lon,wikipedia_title,further_reading,source_id,diameter_km,age_ma,target_rock,exposure,analog_use
+vredefort,Vredefort,South Africa,-27.0,27.5,Vredefort impact structure,,curated_impacts,160,2023,crystalline,eroded,Largest confirmed structure
+sudbury,Sudbury,"Ontario, Canada",46.6,-81.2,Sudbury Basin,,curated_impacts,130,1850,mixed,eroded,Melt sheet and Apollo-era training
+chicxulub,Chicxulub,Mexico,21.4,-89.5,Chicxulub crater,,curated_impacts,150,66,sedimentary,buried,Peak ring drilling
+popigai,Popigai,Russia,71.7,111.2,Popigai crater,,curated_impacts,100,36,crystalline,exposed,Impact diamonds
+manicouagan,Manicouagan,"Quebec, Canada",51.4,-68.7,Manicouagan Reservoir,,curated_impacts,100,214,crystalline,exposed,Multi-ring
+acraman,Acraman,Australia,-32.0,135.5,Lake Acraman,,curated_impacts,90,590,volcanic,eroded,Old Australian structure
+morokweng,Morokweng,South Africa,-26.5,23.5,Morokweng crater,,curated_impacts,70,145,crystalline,buried,Large buried crater
+kara,Kara,Russia,69.1,65.0,Kara crater,,curated_impacts,65,70,sedimentary,eroded,Arctic impact
+beaverhead,Beaverhead,"Montana and Idaho, USA",44.1,-113.0,Beaverhead impact structure,,curated_impacts,60,600,crystalline,eroded,Near the Idaho basalt analog area
+tookoonooka,Tookoonooka,Australia,-27.1,142.8,Tookoonooka crater,,curated_impacts,55,128,sedimentary,buried,Buried structure
+charlevoix,Charlevoix,"Quebec, Canada",47.5,-70.3,Charlevoix crater,,curated_impacts,54,342,crystalline,eroded,Impact in rift
+siljan,Siljan,Sweden,61.0,14.9,Siljan Ring,,curated_impacts,52,377,crystalline,eroded,Ring structure
+karakul,Karakul,Tajikistan,39.0,73.4,Lake Karakul,,curated_impacts,52,5,crystalline,exposed,High-altitude impact lake
+montagnais,Montagnais,"Atlantic offshore, Canada",42.9,-64.2,Montagnais crater,,curated_impacts,45,50,sedimentary,buried,Submarine structure
+araguainha,Araguainha,Brazil,-16.8,-52.98,Araguainha crater,,curated_impacts,40,254,mixed,exposed,Large central uplift
+mjolnir,Mjølnir,Barents Sea,73.8,29.7,Mjølnir crater,,curated_impacts,40,142,sedimentary,buried,Submarine structure
+puchezh-katunki,Puchezh-Katunki,Russia,57.1,43.6,Puchezh-Katunki crater,,curated_impacts,40,167,crystalline,buried,Drilled structure
+saint-martin,Saint Martin,"Manitoba, Canada",51.8,-98.5,Saint Martin crater,,curated_impacts,40,220,crystalline,buried,Prairie impact
+woodleigh,Woodleigh,Australia,-26.1,114.7,Woodleigh crater,,curated_impacts,40,364,mixed,buried,Western Australian impact
+carswell,Carswell,"Saskatchewan, Canada",58.4,-109.5,Carswell crater,,curated_impacts,39,115,crystalline,eroded,Uranium district
+clearwater-west,Clearwater West,"Quebec, Canada",56.2,-74.5,Clearwater Lakes (Quebec),,curated_impacts,36,290,crystalline,exposed,Double crater
+clearwater-east,Clearwater East,"Quebec, Canada",56.1,-74.1,Clearwater Lakes (Quebec),,curated_impacts,26,290,crystalline,exposed,Double crater
+manson,Manson,"Iowa, USA",42.6,-94.6,Manson crater,,curated_impacts,35,74,mixed,buried,Buried midwest crater
+slate-islands,Slate Islands,"Ontario, Canada",48.7,-87.0,Slate Islands,,curated_impacts,30,450,mixed,exposed,Shatter cones
+keurusselka,Keurusselkä,Finland,62.1,24.6,Keurusselkä crater,,curated_impacts,30,1100,crystalline,eroded,Old Finnish structure
+yarrabubba,Yarrabubba,Australia,-27.2,118.4,Yarrabubba crater,,curated_impacts,70,2229,crystalline,eroded,Oldest known impact
+shoemaker,Shoemaker,Australia,-25.9,120.9,Shoemaker crater,,curated_impacts,30,1630,sedimentary,eroded,Formerly Teague
+gosses-bluff,Gosses Bluff,Australia,-23.8,132.3,Gosses Bluff crater,,curated_impacts,22,142,sedimentary,eroded,Desert central uplift
+mistastin,Mistastin,"Labrador, Canada",55.88,-63.3,Mistastin crater,,curated_impacts,28,36,crystalline,exposed,Lunar-like anorthosite target
+haughton,Haughton,"Nunavut, Canada",75.4,-89.7,Haughton impact structure,,curated_impacts,23,23,sedimentary,exposed,Mars analog
+ries,Ries,Germany,48.9,10.6,Nördlinger Ries,,curated_impacts,24,15,mixed,exposed,Apollo 14 training
+steinheim,Steinheim,Germany,48.7,10.1,Steinheim crater,,curated_impacts,3.8,15,sedimentary,exposed,Companion to Ries
+rochechouart,Rochechouart,France,45.8,0.8,Rochechouart impact structure,,curated_impacts,21,207,crystalline,eroded,European structure
+boltysh,Boltysh,Ukraine,48.9,32.2,Boltysh crater,,curated_impacts,24,65,crystalline,buried,Drilled crater
+lonar,Lonar,India,19.98,76.5,Lonar crater,,curated_impacts,1.8,0.05,basalt,exposed,Impact in basalt
+bosumtwi,Bosumtwi,Ghana,6.5,-1.4,Lake Bosumtwi,,curated_impacts,10.5,1.07,crystalline,exposed,Crater lake
+wolfe-creek,Wolfe Creek,Australia,-19.2,127.8,Wolfe Creek Crater,,curated_impacts,0.9,0.3,sedimentary,exposed,Desert meteorite crater
+barringer,Barringer (Meteor Crater),"Arizona, USA",35.03,-111.02,Meteor Crater,,curated_impacts,1.2,0.05,sedimentary,exposed,Apollo training
+odessa,Odessa,"Texas, USA",31.8,-102.5,Odessa Meteor Crater,,curated_impacts,0.17,0.05,sedimentary,exposed,Small crater field
+henbury,Henbury,Australia,-24.6,133.15,Henbury craters,,curated_impacts,0.15,0.004,sedimentary,exposed,Crater field
+kaali,Kaali,Estonia,58.4,22.7,Kaali crater,,curated_impacts,0.11,0.004,sedimentary,exposed,Crater field
+roter-kamm,Roter Kamm,Namibia,-27.8,16.3,Roter Kamm,,curated_impacts,2.5,3.7,crystalline,exposed,Desert crater
+tswaing,Tswaing,South Africa,-25.4,28.1,Tswaing crater,,curated_impacts,1.1,0.22,crystalline,exposed,Salt pan crater
+pingualuit,Pingualuit,"Quebec, Canada",61.3,-73.7,Pingualuit crater,,curated_impacts,3.4,1.4,crystalline,exposed,Cold deep lake crater
+lappajarvi,Lappajärvi,Finland,63.2,23.7,Lappajärvi crater,,curated_impacts,23,77,crystalline,exposed,Impact melt
+dellen,Dellen,Sweden,61.8,16.8,Dellen,,curated_impacts,19,89,crystalline,exposed,Twin lakes
+gardnos,Gardnos,Norway,60.65,9.0,Gardnos crater,,curated_impacts,5,500,crystalline,eroded,Breccia
+zhamanshin,Zhamanshin,Kazakhstan,48.4,60.97,Zhamanshin crater,,curated_impacts,14,0.9,mixed,exposed,Desert crater
+elgygytgyn,El'gygytgyn,Russia,67.5,172.0,Lake El'gygytgyn,,curated_impacts,18,3.6,volcanic,exposed,Arctic crater lake
+chesapeake-bay,Chesapeake Bay,"Virginia, USA",37.3,-76.0,Chesapeake Bay impact crater,,curated_impacts,40,35,sedimentary,buried,Submarine structure
+wetumpka,Wetumpka,"Alabama, USA",32.5,-86.2,Wetumpka crater,,curated_impacts,6.5,84,sedimentary,exposed,Marine impact
+decaturville,Decaturville,"Missouri, USA",37.9,-92.7,Decaturville crater,,curated_impacts,6,300,sedimentary,eroded,Midwest structure
+serpent-mound,Serpent Mound,"Ohio, USA",39.0,-83.4,Serpent Mound crater,,curated_impacts,8,320,sedimentary,eroded,Eroded crater
+upheaval-dome,Upheaval Dome,"Utah, USA",38.4,-109.9,Upheaval Dome,,curated_impacts,10,170,sedimentary,eroded,Desert dome
+sierra-madera,Sierra Madera,"Texas, USA",30.6,-102.9,Sierra Madera,,curated_impacts,13,100,sedimentary,exposed,Central uplift
+middlesboro,Middlesboro,"Kentucky, USA",36.6,-83.7,Middlesboro crater,,curated_impacts,6,300,sedimentary,eroded,Appalachian crater
+wells-creek,Wells Creek,"Tennessee, USA",36.4,-87.7,Wells Creek crater,,curated_impacts,14,200,sedimentary,eroded,Tennessee structure
+kentland,Kentland,"Indiana, USA",40.75,-87.4,Kentland crater,,curated_impacts,13,97,sedimentary,eroded,Quarry exposure
+glover-bluff,Glover Bluff,"Wisconsin, USA",43.97,-89.5,Glover Bluff crater,,curated_impacts,8,500,sedimentary,eroded,Midwest structure
+rock-elm,Rock Elm,"Wisconsin, USA",44.7,-92.2,Rock Elm crater,,curated_impacts,6,460,sedimentary,eroded,Midwest structure
+brent,Brent,"Ontario, Canada",46.1,-78.5,Brent crater,,curated_impacts,3.8,396,crystalline,eroded,Canadian Shield
+holleford,Holleford,"Ontario, Canada",44.5,-76.6,Holleford crater,,curated_impacts,2.35,550,crystalline,eroded,Small crater
+wanapitei,Wanapitei,"Ontario, Canada",46.75,-80.75,Wanapitei crater,,curated_impacts,7.5,37,crystalline,exposed,Lake crater
+nicholson,Nicholson,"Northwest Territories, Canada",62.7,-102.7,Nicholson Lake crater,,curated_impacts,12.5,400,crystalline,exposed,Northern crater
+pilot,Pilot,"Northwest Territories, Canada",60.3,-111.0,Pilot Lake crater,,curated_impacts,6,445,crystalline,exposed,Northern crater
+gow,Gow,"Saskatchewan, Canada",56.45,-104.5,Gow Lake crater,,curated_impacts,5,250,crystalline,exposed,Northern crater
+deep-bay,Deep Bay,"Saskatchewan, Canada",56.4,-102.98,Deep Bay crater,,curated_impacts,13,99,crystalline,exposed,Deep lake crater
+ouarkziz,Ouarkziz,Algeria,29.0,-7.5,Ouarkziz crater,,curated_impacts,3.5,70,sedimentary,exposed,Saharan crater
+tin-bider,Tin Bider,Algeria,27.6,5.1,Tin Bider crater,,curated_impacts,6,70,sedimentary,eroded,Saharan crater
+talemzane,Talemzane,Algeria,33.3,4.0,Talemzane crater,,curated_impacts,1.75,3,sedimentary,exposed,Saharan crater
+aorounga,Aorounga,Chad,19.1,19.25,Aorounga crater,,curated_impacts,12.6,345,sedimentary,eroded,Desert structure
+gweni-fada,Gweni-Fada,Chad,16.9,21.75,Gweni-Fada crater,,curated_impacts,14,345,sedimentary,eroded,Desert structure
+amguid,Amguid,Algeria,26.0,4.4,Amguid crater,,curated_impacts,0.45,0.1,sedimentary,exposed,Small fresh crater
+tenoumer,Tenoumer,Mauritania,22.9,-10.4,Tenoumer crater,,curated_impacts,1.9,1.5,crystalline,exposed,Saharan crater
+aouelloul,Aouelloul,Mauritania,20.25,-12.7,Aouelloul crater,,curated_impacts,0.39,3,sedimentary,exposed,Saharan crater
+kamil,Kamil,Egypt,22.0,26.1,Kamil crater,,curated_impacts,0.045,0.004,sedimentary,exposed,Fresh small crater

@@ -1,0 +1,7 @@
+# Never commit raw downloads, intermediates or the virtual environment
+raw/
+work/*
+!work/log.md
+.venv/
+__pycache__/
+*.pyc

@@ -1,0 +1,34 @@
+{
+ "body_range_p99": {
+  "moon": {
+   "crater_density_5km_n": 935.91
+  },
+  "mars": {
+   "crater_density_5km_n": 115.73560000000013
+  }
+ },
+ "comparison_ranges": {
+  "slope": 6,
+  "roughness": 400,
+  "relief": 2500,
+  "cratering": 0.6,
+  "basaltic": 0.6,
+  "crystalline": 0.6,
+  "volcanic": 1.0,
+  "temp_mean": 40,
+  "temp_high": 40,
+  "temp_low": 40,
+  "temp_swing": 40,
+  "sunlight": 0.5,
+  "ice": 0.6,
+  "dryness": 0.6,
+  "dust": 0.6,
+  "wind": 0.7,
+  "karst": 0.8,
+  "lavatube": 0.6,
+  "barren": 0.5,
+  "extremophile": 0.7,
+  "pressure": 2.5,
+  "latitude": 0.4
+ }
+}

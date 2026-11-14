@@ -1,0 +1,15 @@
+{
+ "_note": "Fixed 'Earth cannot reproduce this' text per target body. These are never scored (decision 9). Shown on every card.",
+ "moon": [
+  "Gravity: the Moon pulls at about 1.6 m/s2, one sixth of Earth. No Earth site can reproduce it, so walking, digging and dust behaviour differ.",
+  "Vacuum: the Moon has almost no atmosphere. Earth's air changes heat flow, dust motion and how equipment cools.",
+  "Radiation: with no air or magnetic field, the surface takes cosmic rays and solar particles that Earth's atmosphere blocks.",
+  "Lunar night: dark and cold for about two weeks at a time everywhere except a few polar peaks. No Earth site matches that cycle."
+ ],
+ "mars": [
+  "Gravity: Mars pulls at about 3.7 m/s2, 38 percent of Earth. Earth cannot reproduce it outside a short parabolic flight.",
+  "Thin atmosphere: Mars surface pressure is under one percent of Earth's and almost all carbon dioxide, so wind, dust and heat transfer behave differently.",
+  "Radiation: Mars has no global magnetic field and a thin atmosphere, so the surface dose is far higher than anywhere on Earth.",
+  "Soil chemistry: Martian soil carries perchlorates that most Earth analog soils lack."
+ ]
+}

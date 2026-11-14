@@ -1,0 +1,66 @@
+{
+ "presets": {
+  "raw": {
+   "label": "Just similarities",
+   "weights": {
+    "terrain": 12.5,
+    "geology": 12.5,
+    "thermal": 12.5,
+    "water": 12.5,
+    "dust": 12.5,
+    "subsurface": 12.5,
+    "habitability": 12.5,
+    "operations": 12.5
+   }
+  },
+  "crewed": {
+   "label": "Crewed mission",
+   "weights": {
+    "terrain": 20,
+    "geology": 15,
+    "thermal": 20,
+    "water": 5,
+    "dust": 10,
+    "subsurface": 5,
+    "habitability": 5,
+    "operations": 20
+   }
+  },
+  "base": {
+   "label": "Base construction",
+   "weights": {
+    "terrain": 20,
+    "geology": 15,
+    "thermal": 15,
+    "water": 15,
+    "dust": 10,
+    "subsurface": 15,
+    "habitability": 0,
+    "operations": 10
+   }
+  },
+  "rover": {
+   "label": "Rover landing",
+   "weights": {
+    "terrain": 30,
+    "geology": 10,
+    "thermal": 15,
+    "water": 5,
+    "dust": 15,
+    "subsurface": 0,
+    "habitability": 5,
+    "operations": 20
+   }
+  }
+ },
+ "dimensions": {
+  "geology": "Geology, mineralogy, and surface materials",
+  "terrain": "Terrain, elevation, slope, roughness, craters, and other topographic features",
+  "thermal": "Temperature, illumination, and environmental extremes",
+  "water": "Water, ice, permafrost, and other potential resources",
+  "dust": "Dust, wind, erosion, and other atmospheric or surface processes",
+  "habitability": "Biology, extremophiles, habitability, and biosignatures",
+  "subsurface": "Caves, lava tubes, underground environments, and other subsurface features",
+  "operations": "Conditions relevant to landing, mobility, navigation, robotic operations, human exploration, or construction"
+ }
+}

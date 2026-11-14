@@ -1,0 +1,55 @@
+# Data sources
+
+One entry per dataset used in `terrain_data/`. All were downloaded on **2026-11-14** unless noted. The machine-readable version is `out/sources.csv`; the download log is `work/log.md`. Licences are summarised from the providers' pages and should be rechecked before any redistribution beyond the hackathon. Raw downloads are never committed.
+
+The temperature grids for the Moon and Mars (`moon_data/moon_grid.csv`, `mars_data/mars_grid.csv`) were built by teammates from LRO Diviner and the Mars Climate Database and are used unchanged.
+
+## Moon
+
+**LRO LOLA gridded elevation (LDEM_16).** NASA Lunar Reconnaissance Orbiter, Lunar Orbiter Laser Altimeter, via the PDS Geosciences Node. 16 pixels per degree, 0.5 m height steps, relative to a 1,737.4 km sphere. NASA data, free to use with credit. https://pds-geosciences.wustl.edu/lro/lro-l-lola-3-rdr-v1/ . Cite: Smith, D. E., et al. (2010), Initial observations from the Lunar Orbiter Laser Altimeter (LOLA), Geophysical Research Letters, 37, L18204.
+
+**Robbins lunar crater database.** USGS Astrogeology. Craters 1 to 2 km and larger with circular fits; used for craters 5 km and larger. USGS data, public domain. https://astrogeology.usgs.gov/search/map/moon_crater_database_v1_robbins . Cite: Robbins, S. J. (2019), A new global database of lunar impact craters >1-2 km: 1. Crater locations and sizes, comparisons with published databases, and global analysis, Journal of Geophysical Research: Planets, 124, 871-892.
+
+**Lunar Prospector gamma-ray spectrometer element abundances.** NASA Lunar Prospector, PDS Geosciences Node, dataset LP-L-GRS-5-ELEM-ABUNDANCE-V1.0, the 2-degree "high1" product. NASA data. https://pds-geosciences.wustl.edu/lunar/lp-l-grs-5-elem-abundance-v1/ . Cite: Prettyman, T. H., et al. (2006), Elemental composition of the lunar surface: Analysis of gamma ray spectroscopy data from Lunar Prospector, Journal of Geophysical Research, 111, E12007.
+
+**LROC Lunar Pit Atlas.** Arizona State University / NASA LRO Camera team, via the LROC archive. Mare and highland collapse pits only. https://data.lroc.im-ldi.com/lroc/view_rdr/SHAPEFILE_LUNAR_PIT_LOCATIONS . Cite: Wagner, R. V., and Robinson, M. S. (2014), Distribution, formation mechanisms, and significance of lunar pits, Icarus, 237, 52-60.
+
+**LRO Diviner global surface temperatures** (teammates, unchanged). Cite: Williams, J.-P., et al. (2017), The global surface temperatures of the Moon as measured by the Diviner Lunar Radiometer Experiment, Icarus, 283, 300-325.
+
+## Mars
+
+**MGS MOLA topography (MEGDR, 16 pixels per degree).** NASA Mars Global Surveyor, Mars Orbiter Laser Altimeter, PDS Geosciences Node. NASA data. https://pds-geosciences.wustl.edu/mgs/mgs-m-mola-5-megdr-l3-v1/ . Cite: Smith, D. E., et al. (2001), Mars Orbiter Laser Altimeter: Experiment summary after the first year of global mapping of Mars, Journal of Geophysical Research, 106(E10), 23689-23722.
+
+**Robbins and Hynek Mars crater database.** USGS Astrogeology, fetched through the USGS pygeoapi service, craters 5 km and larger. Public domain. https://astrogeology.usgs.gov/search/map/mars_crater_database_v1_robbins . Cite: Robbins, S. J., and Hynek, B. M. (2012), A new global database of Mars impact craters >=1 km: 1. Database creation, properties, and parameters, Journal of Geophysical Research, 117, E05004.
+
+**TES nighttime thermal inertia.** NASA Mars Global Surveyor, Thermal Emission Spectrometer, PDS dataset MGS-M-TES-5-TIMAP-V1.0. NASA data. https://pds-geosciences.wustl.edu/mgs/mgs-m-tes-5-timap-v1/ . Cite: Putzig, N. E., and Mellon, M. T. (2007), Apparent thermal inertia and the surface heterogeneity of Mars, Icarus, 191, 68-94.
+
+**Odyssey GRS water-equivalent hydrogen.** NASA Mars Odyssey Gamma Ray Spectrometer, PDS dataset ODY-M-GRS-5-ELEMENTS-V1.0, 5-degree smoothed H2O map. NASA data. https://pds-geosciences.wustl.edu/ody/ody-m-grs-5-elements-v1/ . Cite: Feldman, W. C., et al. (2004), Global distribution of near-surface hydrogen on Mars, Journal of Geophysical Research, 109, E09006.
+
+**Global geologic map of Mars (SIM 3292).** USGS, 1:20,000,000. Public domain. https://pubs.usgs.gov/sim/3292/ . Cite: Tanaka, K. L., Skinner, J. A., Jr., Dohm, J. M., Irwin, R. P., III, Kolb, E. J., Fortezzo, C. M., Platz, T., Michael, G. G., and Hare, T. M. (2014), Geologic map of Mars: U.S. Geological Survey Scientific Investigations Map 3292, scale 1:20,000,000.
+
+**Mars Climate Database v6.2 surface temperature** (teammates, unchanged). Cite the Mars Climate Database team (LMD, Open University, ESA, CNES) per http://www-mars.lmd.jussieu.fr/ .
+
+## Earth
+
+**ETOPO 2022, 60 arc-second surface elevation.** NOAA National Centers for Environmental Information. Public domain. https://www.ncei.noaa.gov/products/etopo-global-relief-model . Cite: NOAA National Centers for Environmental Information (2022), ETOPO 2022 Global Relief Model, doi:10.25921/fd45-gt74.
+
+**GLiM, Global Lithological Map, 0.5-degree grid.** Hartmann and Moosdorf, University of Hamburg, via PANGAEA. Check the PANGAEA page for the exact licence (the data portal usually applies CC BY). https://doi.pangaea.de/10.1594/PANGAEA.788537 . Cite: Hartmann, J., and Moosdorf, N. (2012), The new global lithological map database GLiM: A representation of rock properties at the Earth surface, Geochemistry, Geophysics, Geosystems, 13, Q12004.
+
+**Holocene volcanoes.** Smithsonian Institution, Global Volcanism Program, Volcanoes of the World. Free to use with citation. https://volcano.si.edu/ . Cite: Global Volcanism Program, Volcanoes of the World database, Smithsonian Institution, accessed 2026-11-14 (use the version and DOI shown on the Smithsonian page for that date).
+
+**WorldClim 2.1 climate normals 1970-2000, 10 arc-minute.** WorldClim project. Free for academic and non-commercial use; check the terms before commercial reuse. https://www.worldclim.org/data/worldclim21.html . Cite: Fick, S. E., and Hijmans, R. J. (2017), WorldClim 2: new 1-km spatial resolution climate surfaces for global land areas, International Journal of Climatology, 37(12), 4302-4315.
+
+**Natural Earth.** 1:50m land and country polygons, 1:10m states and provinces. Public domain. https://www.naturalearthdata.com/ . Credit: Made with Natural Earth.
+
+**NASA POWER climatology.** NASA Langley Research Center, Prediction Of Worldwide Energy Resources. Surface skin temperature (TS, TS_MAX, TS_MIN), 2001 to 2025 climatology, regional endpoint, 10-degree boxes. NASA open data. https://power.larc.nasa.gov/ . Credit: "These data were obtained from the NASA Langley Research Center (LaRC) POWER Project funded through the NASA Earth Science/Applied Science Program."
+
+**Impact structures list.** The structures table is based on the Earth Impact Database of the Planetary and Space Science Centre, University of New Brunswick (https://impact.uwo.ca/impactdb/ at the time of writing) as an index of names only. Coordinates, diameters and ages were written from the AI's memory, with coordinates checked against Wikipedia. Treat diameters and ages as unverified.
+
+## Curated tables and pictures
+
+**Analog sites, caves, impact structures, Moon and Mars targets, Irish sites** (`out/*.csv`). Drafted by Claude (an AI) from general knowledge, then enriched and checked as described in `AI_USAGE.md`. Wikipedia is the only external check, and it was used for coordinates.
+
+**Pictures.** Page images from English Wikipedia, with the author and licence line stored in `image_credit` for every row and shown with the picture. Demo pictures are saved in `out/images/` (800 pixels wide) so the presentation does not depend on the venue network. Wikimedia Commons licences differ by picture; keep the credit text with each image.
+
+**Not used.** NASA Earth Observations (NEO) vegetation, aerosol, snow and surface-temperature products (no longer served), the USGS Mars cave catalog and LROC shadowed-region shapefiles (hosts unreachable), Lunar Prospector neutron hydrogen and the Mars Dust Activity Database (skipped for time).

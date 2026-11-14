@@ -1,0 +1,10 @@
+{
+  "_note": "Weights per dimension for each preset. Decision 9 and section 6.3 of BUILD_PROMPT.md. A dimension with weight 0 is not counted. overall = sum(w*dim_score)/sum(w) over dimensions that have coverage.",
+  "dimensions": ["terrain", "geology", "thermal", "water", "dust", "subsurface", "habitability", "operations"],
+  "presets": {
+    "raw":     { "label": "Just similarities", "weights": { "terrain": 12.5, "geology": 12.5, "thermal": 12.5, "water": 12.5, "dust": 12.5, "subsurface": 12.5, "habitability": 12.5, "operations": 12.5 } },
+    "crewed":  { "label": "Crewed mission",    "weights": { "terrain": 20,   "geology": 15,   "thermal": 20,   "water": 5,    "dust": 10,   "subsurface": 5,    "habitability": 5,    "operations": 20 } },
+    "base":    { "label": "Base construction", "weights": { "terrain": 20,   "geology": 15,   "thermal": 15,   "water": 15,   "dust": 10,   "subsurface": 15,   "habitability": 0,    "operations": 10 } },
+    "rover":   { "label": "Rover landing",     "weights": { "terrain": 30,   "geology": 10,   "thermal": 15,   "water": 5,    "dust": 15,   "subsurface": 0,    "habitability": 5,    "operations": 20 } }
+  }
+}
