@@ -1,6 +1,15 @@
 # Project notes (for teammates and their Claude)
 
-Team: Liam, Charlie, Christian. Repo: https://github.com/MCCHRISmaster/HackAthlone2026LiamCharlieChristian (branch `main`).
+Team: Liam, Charlie, Christian. Repo: https://github.com/MCCHRISmaster/ReHackedAthloneLLCCS
+(moved here from the earlier HackAthlone2026LiamCharlieChristian repo).
+
+Branches in the repo:
+- `main`: Analog Finder prototype, NASA POWER data, these notes
+- `heat-map`: everything in `main`, plus the CSV heat map, data templates and grid checker
+- `Graphical_Elements`: teammate's 3D globe app (`analog-atlas/`, NASA WorldWind)
+- `l_branch`: teammate's Earth grid builder (`earth_data/`: `build_earth_grid.py`, `earth_grid.csv`, `sites.csv`, `get_point.py`)
+
+`earth_grid.csv` is the piece needed for the planned reverse search (Moon/Mars → Earth).
 
 ## The challenge
 NASA Space Apps 2026: **"Permanent Moon Base Locations and Mars."** Use open NASA and other space-agency data
