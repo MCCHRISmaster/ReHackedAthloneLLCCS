@@ -114,7 +114,7 @@ export async function loadGrid(body) {
 
 /** Ground-surface temperature climatology (2001–2025) at a point, in °C. */
 export async function fetchEarthTemps(lat, lon) {
-  const url = `${POWER_URL}?parameters=TS,TS_MAX,TS_MIN&community=RE` +
+  const url = `${POWER_URL}?parameters=TS,TS_MAX,TS_MIN,PS&community=RE` +
     `&latitude=${lat.toFixed(2)}&longitude=${lon.toFixed(2)}&format=JSON`;
   const res = await fetch(url);
   if (!res.ok) throw new Error(`NASA POWER returned ${res.status}`);
@@ -126,7 +126,9 @@ export async function fetchEarthTemps(lat, lon) {
   };
   const mean = p.TS.ANN > -900 ? p.TS.ANN : avg('TS');
   if (Number.isNaN(mean)) throw new Error('no data for this point');
-  return { mean, high: avg('TS_MAX'), low: avg('TS_MIN') };
+  // surface pressure: POWER gives kPa
+  const ps = p.PS ? (p.PS.ANN > -900 ? p.PS.ANN : avg('PS')) : NaN;
+  return { mean, high: avg('TS_MAX'), low: avg('TS_MIN'), pressure: Number.isNaN(ps) ? NaN : ps * 1000 };
 }
 
 /* ---------------- Matching ---------------- */
