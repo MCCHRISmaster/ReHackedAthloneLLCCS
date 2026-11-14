@@ -32,6 +32,14 @@ Local `main` (not yet pushed) has `heat-map` and `Graphical_Elements` merged in.
 - **This resolves the "placeholder Moon/Mars data" weakness described above.**
 - Run: `node prototype/server.js analog-atlas/analog-atlas 8002`, then open http://localhost:8002.
 
+### Ground and soil composition (`Ground_and_Soil_Composition_Data` branch)
+- `terrain_data/pipeline/35_soil_features.py` → `terrain_data/out/moon_soil.csv`, `mars_soil.csv`, `earth_soil_1deg.csv`, `earth_soil_2deg.csv` (same 2°/1° layout as the `*_features.csv` files).
+  - Moon: Lunar Prospector GRS (Fe, Si, K, Th, oxides). Mars: Odyssey GRS (Fe, Si, K, Th, Cl). Earth: SoilGrids 2.0 topsoil (organic carbon, clay/silt/sand, pH, bulk density, stones) + Fe/Si/K/Th **estimated** from GLiM rock type.
+- Scored in `terrain_data/config/features.json` as iron, potassium, thorium (geology) and organic carbon (habitability); sites/matches rescored.
+- Globe: 🪨 **Ground & soil** symbol in the right rail and combo slider, plus a "Ground & soil" group in the data grid (`match.js` `SOIL_FILES`/`soilAt`, loaded in `main.js` `loadTerrain`).
+- Rebuild: `terrain_data\.venv\Scripts\python.exe terrain_data\pipeline\run_all.py --phase soil`, then `--phase score`, then `--phase validate` (needs `node` on PATH).
+- On some Windows machines port 8000 is reserved (EACCES); use `node prototype/server.js . 8002`.
+
 ## The challenge
 NASA Space Apps 2026: **"Permanent Moon Base Locations and Mars."** Use open NASA and other space-agency data
 to find and describe Earth places that are good stand-ins ("analogs") for candidate Moon-base and Mars

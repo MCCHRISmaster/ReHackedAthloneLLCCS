@@ -20,11 +20,17 @@ const config = {
 const ranges = json(path.join(root, 'out/feature_ranges.json')).body_range_p99;
 const scorer = createScorer(config, ranges);
 
-const earth = parseFeatureCSV(read(path.join(root, 'out/earth_features_1deg.csv')));
+// ground and soil composition (pipeline/35_soil_features.py), merged the same way score_data.py does
+const SOIL_COLS = ['fe_pct', 'k_pct', 'th_ppm', 'soc_g_kg'];
+const withSoil = (table, file) => {
+  const p = path.join(root, 'out', file);
+  return fs.existsSync(p) ? attachColumns(table, parseFeatureCSV(read(p)), SOIL_COLS) : table;
+};
+const earth = withSoil(parseFeatureCSV(read(path.join(root, 'out/earth_features_1deg.csv'))), 'earth_soil_1deg.csv');
 const tables = {};
 for (const [body, grid] of [['moon', 'moon_data/moon_grid.csv'], ['mars', 'mars_data/mars_grid.csv']]) {
-  tables[body] = attachColumns(parseFeatureCSV(read(path.join(root, `out/${body}_features.csv`))),
-    parseFeatureCSV(read(path.join(root, '..', grid))));
+  tables[body] = withSoil(attachColumns(parseFeatureCSV(read(path.join(root, `out/${body}_features.csv`))),
+    parseFeatureCSV(read(path.join(root, '..', grid)))), `${body}_soil.csv`);
 }
 
 const pairs = json(process.argv[2]);

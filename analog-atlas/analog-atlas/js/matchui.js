@@ -3,7 +3,7 @@
  *   top centre   LOCATION MATCH bar: overall (combo) % per other world + go-to buttons
  *   left         minimap cards of the OTHER worlds (heat map of the chosen symbol + best pin)
  *   bottom left  ADVANCED options
- *   right rail   🎛️ combo · 🌡️ temperature · ⛰️ terrain · ☀️ sun & wind · ▦ data grid
+ *   right rail   🎛️ combo · 🌡️ temperature · ⛰️ terrain · ☀️ sun & wind · 🪨 ground & soil · ▦ data grid
  *   right panel  details for the chosen symbol, rover and human development
  * Pure DOM; main.js passes in state + results from match.js.
  */
@@ -11,7 +11,7 @@ import { BODIES } from './config.js';
 import { mapHTML, mapXY } from './planet-art.js';
 import {
   MATCH_METRICS, renderScoreCanvas, VARIABLES, VARIABLE_SOURCES, BODY_CONSTANTS,
-  cellIndex, SOLAR_RANGE, WIND_RANGE, PRESS_DECADES,
+  cellIndex, SOLAR_RANGE, WIND_RANGE, PRESS_DECADES, SOIL_FEATURES,
 } from './match.js';
 import { matchColor } from './temperature.js';
 
@@ -43,15 +43,17 @@ export const RAIL = [
   { key: 'temp', icon: '🌡️', name: 'Temperature', short: 'TEMP' },
   { key: 'terrain', icon: '⛰️', name: 'Terrain', short: 'TERRAIN' },
   { key: 'sunwind', icon: '☀️', name: 'Sun & wind', short: 'SUN·WIND' },
+  { key: 'soil', icon: '🪨', name: 'Ground & soil', short: 'SOIL' },
   { key: 'grid', icon: '▦', name: 'Data grid', short: 'DATA' },
 ];
 const RAIL_BY = Object.fromEntries(RAIL.map((r) => [r.key, r]));
-export const HEAT_KEYS = ['combo', 'temp', 'terrain', 'sunwind'];
+export const HEAT_KEYS = ['combo', 'temp', 'terrain', 'sunwind', 'soil'];
 const WEIGHT_PARTS = [
   { key: 'temp', label: '🌡️ Temperature' },
   { key: 'press', label: '⏲️ Pressure' },
   { key: 'terrain', label: '⛰️ Terrain' },
   { key: 'sunwind', label: '☀️ Sun & wind' },
+  { key: 'soil', label: '🪨 Ground & soil' },
 ];
 
 let openView = null;   // which symbol's details the right panel shows
@@ -212,6 +214,11 @@ const SUN_SOURCE = {
   moon: 'Solar energy calculated from latitude (no air); no wind (vacuum)',
   mars: 'Solar energy calculated from latitude × 0.65 for typical dust; wind not in our data yet',
 };
+const SOIL_SOURCE = {
+  earth: 'Fe, K, Th ESTIMATED from bedrock type (GLiM lithology × typical rock chemistry, Turekian & Wedepohl 1961); organic carbon from ISRIC SoilGrids 2.0 topsoil (0–5 cm)',
+  moon: 'Lunar Prospector gamma-ray spectrometer, measured from orbit (top ~30 cm); organic carbon 0',
+  mars: 'Mars Odyssey gamma-ray spectrometer, measured from orbit (top ~30 cm, 5° maps); organic carbon ≈0',
+};
 
 function adviceFor(ref, r, stat) {
   const b = r.best, v = b.values, s = b.scores, there = name(r.target), here = name(ref.body);
@@ -229,6 +236,11 @@ function adviceFor(ref, r, stat) {
   }
   const tr = v.terrain || {};
   rover.push(`Terrain match ${pct(s.terrain)}: slope ${tr.slope != null && !Number.isNaN(tr.slope) ? tr.slope.toFixed(1) + '°' : '—'} there vs ${ref.terrain && !Number.isNaN(ref.terrain.slope) ? ref.terrain.slope.toFixed(1) + '°' : '—'} here. ${s.terrain >= 0.75 ? 'Good ground for mobility, navigation and wheel-wear tests.' : 'Expect different mobility challenges than this site can rehearse.'}`);
+  const sa = ref.soil || {}, st = v.soil || {};
+  if (!Number.isNaN(s.soil) && !Number.isNaN(sa.iron ?? NaN) && !Number.isNaN(st.iron ?? NaN)) {
+    const d = st.iron - sa.iron;
+    rover.push(`Ground chemistry match ${pct(s.soil)}: ${st.iron.toFixed(1)}% iron there vs ${sa.iron.toFixed(1)}% here. ${Math.abs(d) <= 2 ? 'Close enough to calibrate spectrometers and test regolith-processing kit on.' : d > 0 ? 'The ground there is richer in iron than anything here: dust will be darker and more magnetic.' : 'The ground there is poorer in iron than here.'}`);
+  }
   if (!Number.isNaN(v.solar) && !Number.isNaN(ref.solar)) {
     rover.push(`Sunlight: ${Math.round(ref.solar)} W/m² here vs ${Math.round(v.solar)} W/m² there. ${Math.abs(v.solar - ref.solar) < 50 ? 'Solar panel and battery tests carry over well.' : v.solar > ref.solar ? 'More sun there: panels will over-perform compared with tests here.' : 'Less sun there: size panels and batteries with margin.'}`);
   }
@@ -285,6 +297,15 @@ function metricDetail(k, ref, r, stat) {
         ${row3('Solar energy (yearly avg.)', sol(ref.solar), sol(v.solar))}${row3('Wind speed', ref.body === 'moon' ? '0 (no air)' : ref.body === 'mars' ? 'not in data' : w(ref.wind), r.target === 'moon' ? '0 (no air)' : r.target === 'mars' ? 'not in data' : w(v.wind))}</tbody></table>
       <p class="md-text">Average of solar (0% at ${SOLAR_RANGE} W/m² apart) and wind (0% at ${WIND_RANGE} m/s apart) similarity, using whichever is available → <b>${pct(s)}</b>. Sun sets power and heating; wind drives dust, erosion and lander loads.</p>
       <p class="md-src">${here}: ${esc(SUN_SOURCE[ref.body])}<br>${there}: ${esc(SUN_SOURCE[r.target])}</p>`;
+  }
+  if (k === 'soil') {
+    const a = ref.soil || {}, t = v.soil || {};
+    const f = (x, kk) => (x == null || Number.isNaN(x) ? '—' : `${x.toFixed(kk.digits)}${kk.unit}`);
+    return `<table class="metric-table">${head}<tbody>
+        ${SOIL_FEATURES.map((kk) => row3(kk.label, f(a[kk.key], kk), f(t[kk.key], kk))).join('')}</tbody></table>
+      <p class="md-text">Average similarity of iron, potassium, thorium and organic carbon (0% at ${SOIL_FEATURES.map((kk) => `${kk.range}${kk.unit}`).join(', ')} apart) → <b>${pct(s)}</b>.
+        Chemistry decides what a rover's instruments see and what a base could mine; organic carbon is what makes Earth soil alive, and the Moon and Mars have essentially none.</p>
+      <p class="md-src">${here}: ${esc(SOIL_SOURCE[ref.body])}<br>${there}: ${esc(SOIL_SOURCE[r.target])}</p>`;
   }
   // terrain
   const t = ref.terrain, keys = b.terrainKeys || [];

@@ -20,7 +20,7 @@ terrain_data\.venv\Scripts\python.exe terrain_data\pipeline\run_all.py --phase a
 terrain_data\.venv\Scripts\python.exe terrain_data\pipeline\run_all.py --phase score
 ```
 
-Phases: `setup`, `moon`, `earth`, `mars`, `curated`, `score`, `validate`. A fresh build downloads about 1.6 GB and spends about 45 minutes on NASA POWER temperature requests. The network at the venue drops hosts at random; `pipeline/dl.py` retries, resumes and tries mirrors.
+Phases: `setup`, `moon`, `earth`, `mars`, `soil`, `curated`, `score`, `validate`. The `soil` phase is small (about 20 MB, a minute) and only needs the committed `out/earth_features_*.csv`, so it runs on a fresh clone: `run_all.py --phase soil`, then `--phase score`. A fresh build downloads about 1.6 GB and spends about 45 minutes on NASA POWER temperature requests. The network at the venue drops hosts at random; `pipeline/dl.py` retries, resumes and tries mirrors.
 
 See the results in the browser: from the repo root run `node prototype/server.js . 8000`, then open
 
@@ -35,6 +35,7 @@ See the results in the browser: from the repo root run `node prototype/server.js
 | `out/matches.json` | For each target and preset: the best 25 Earth cells, the best 10 named sites, the places you would not expect |
 | `out/moon_features.csv`, `mars_features.csv` | 2-degree feature grids in the team layout |
 | `out/earth_features_1deg.csv`, `earth_features_2deg.csv` | Earth feature grids (1 degree for ranking, 2 degrees for the globe) |
+| `out/moon_soil.csv`, `mars_soil.csv`, `earth_soil_1deg.csv`, `earth_soil_2deg.csv` | Ground and soil composition: iron, silicon, potassium, thorium (Moon and Mars measured from orbit, Earth estimated from rock type), plus Earth topsoil from SoilGrids (organic carbon, texture, pH, density, stones). Built by `pipeline/35_soil_features.py` |
 | `out/earth_grid_filled.csv`, `earth_grid_power_full.csv` | Complete Earth temperature grids from NASA POWER, team layout |
 | `out/analog_sites.csv`, `caves.csv`, `impact_structures.csv`, `volcanoes.csv`, `irish_sites.csv`, `targets.csv` | The curated tables with Wikipedia links, picture credits |
 | `out/sites.csv`, `sources.csv`, `presets.json`, `caveats.json`, `feature_ranges.json`, `targets.json` | Team-format site table, sources, scoring configuration |

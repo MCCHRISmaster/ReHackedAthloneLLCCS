@@ -33,9 +33,42 @@ def table(path: Path, grid) -> dict:
     return d
 
 
+def merge_soil(tbl: dict, path: Path, grid) -> None:
+    """Add the soil grid's columns (35_soil_features.py) to a feature table. Missing file = no soil comparisons."""
+    if not path.exists():
+        return
+    soil = tbl.setdefault("_soil_cols", set())
+    for k, v in read_grid_csv(path, grid).items():
+        if k not in tbl and k not in ("body", "source_id", "_grid"):
+            tbl[k] = v
+            soil.add(k)
+
+
+def previous_island_values(earth: dict, sites: list[dict], sidx: np.ndarray) -> dict:
+    """Stand-in for work/earth_features_all.npz (an uncommitted cache) on a machine without it.
+
+    For island sites (own cell under 25 percent land), reuse the per-site feature values that the last full
+    build exported to out/sites.json, which ARE those cells' own values. Without this, a rescore on a fresh
+    clone silently moves Timanfaya, Teide, Vulcano and friends to a mainland cell up to 250 km away.
+    Soil columns are left to the soil grids. Returns {site id: {column: value}}.
+    """
+    p = OUT / "sites.json"
+    if not p.exists():
+        return {}
+    prev = {s["id"]: s for s in json.loads(p.read_text(encoding="utf-8"))}
+    out = {}
+    for i, s in enumerate(sites):
+        e = prev.get(s["id"])
+        if (e and not earth["land"][sidx[i]] and e.get("metrics", {}).get("elev_mean_m")
+                and not (e.get("data_cell") or {}).get("borrowed_km")):
+            out[s["id"]] = {k: m["value"] for k, m in e["metrics"].items()}
+    return out
+
+
 def load_all() -> dict:
     # ---- Earth 1 degree: features, then temperatures from the POWER pull if the CSV has none yet
     earth = table(OUT / "earth_features_1deg.csv", G1)
+    merge_soil(earth, OUT / "earth_soil_1deg.csv", G1)
     if "temp_mean_c" not in earth:
         p = ROOT / "work" / "power_temp_1deg.npz"
         if p.exists():
@@ -46,6 +79,8 @@ def load_all() -> dict:
     # ---- Moon and Mars: features plus the team's temperature grids, unchanged
     moon = table(OUT / "moon_features.csv", G2)
     mars = table(OUT / "mars_features.csv", G2)
+    merge_soil(moon, OUT / "moon_soil.csv", G2)
+    merge_soil(mars, OUT / "mars_soil.csv", G2)
     for body, tbl, path in (("moon", moon, REPO / "moon_data" / "moon_grid.csv"), ("mars", mars, REPO / "mars_data" / "mars_grid.csv")):
         t = read_grid_csv(path, G2)
         for k in ("temp_mean_c", "temp_high_c", "temp_low_c"):
@@ -79,9 +114,10 @@ def site_columns(data: dict) -> tuple[dict, np.ndarray, dict]:
     p = ROOT / "work" / "earth_features_all.npz"
     allcols = dict(np.load(p)) if p.exists() else {}
     has_own = lambda g: bool(allcols) and not np.isnan(allcols["elev_mean_m"][g])
+    prev = {} if allcols else previous_island_values(earth, sites, sidx)
     borrowed = {}
     for i in range(len(sites)):
-        if not earth["land"][sidx[i]] and not has_own(sidx[i]):
+        if not earth["land"][sidx[i]] and not has_own(sidx[i]) and sites[i]["id"] not in prev:
             d = haversine_km(lat[i], lon[i], earth["lat"][L], earth["lon"][L])
             k = int(np.argmin(d))
             if d[k] <= 250:
@@ -94,6 +130,11 @@ def site_columns(data: dict) -> tuple[dict, np.ndarray, dict]:
             for k in cols:
                 if k in allcols:
                     cols[k][i] = allcols[k][g]
+        elif not earth["land"][g] and sites[i]["id"] in prev:
+            pv = prev[sites[i]["id"]]
+            for k in cols:
+                if k not in earth.get("_soil_cols", ()):
+                    cols[k][i] = pv.get(k, np.nan)
     caves = [r for r in read_rows(OUT / "caves.csv") if r["cave_type"] == "lava_tube"]
     for i, s in enumerate(sites):
         if s.get("lith_override") == "basic_volcanic":
@@ -101,6 +142,10 @@ def site_columns(data: dict) -> tuple[dict, np.ndarray, dict]:
                       "lith_plutonic_pct", "lith_metamorphic_pct", "lith_ice_pct", "karst_idx"):
                 cols[k][i] = 0.0
             cols["lith_volcanic_pct"][i] = cols["lith_basic_volcanic_pct"][i] = 100.0
+            # element estimate follows the rock type: basalt row of ROCK_CHEM in 35_soil_features.py
+            for k, v in (("fe_pct", 8.65), ("si_pct", 23.0), ("k_pct", 0.83), ("th_ppm", 4.0)):
+                if k in cols:
+                    cols[k][i] = v
             tube_km = min(float(haversine_km(lat[i], lon[i], float(c["lat"]), float(c["lon"]))) for c in caves)
             near = min(cols["volcano_nearest_km"][i], tube_km)
             cols["lavatube_idx"][i] = float(proximity_index(np.array([near]), 50, 300)[0])

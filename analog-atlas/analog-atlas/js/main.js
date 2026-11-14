@@ -352,6 +352,16 @@ async function loadTerrain() {
       console.warn('terrain data not loaded, using sample values:', err.message);
     }
   }
+  // ground & soil composition (after terrain: it adds columns to the same feature store)
+  for (const [body, path] of Object.entries(match.SOIL_FILES)) {
+    try {
+      const res = await fetch(path);
+      if (!res.ok) throw new Error(`${path}: HTTP ${res.status}`);
+      match.registerSoil(body, temp.parseCSV(await res.text()));
+    } catch (err) {
+      console.warn('soil data not loaded, soil score left out:', err.message);
+    }
+  }
   // re-measure the current location's terrain with the real data and rescore everything
   const r = state.temp.ref;
   if (r) Object.assign(r, { terrain: match.terrainAt(r.body, r.lat, r.lon, state.scale) }, match.refExtras(r.body, r.lat, r.lon));

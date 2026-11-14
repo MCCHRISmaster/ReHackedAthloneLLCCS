@@ -22,6 +22,7 @@ export const MATCH_METRICS = {
   temp: { label: 'TEMPERATURE', short: 'TEMP' },
   terrain: { label: 'TERRAIN', short: 'TERRAIN' },
   sunwind: { label: 'SUN & WIND', short: 'SUN/WIND' },
+  soil: { label: 'GROUND & SOIL', short: 'SOIL' },
 };
 
 const latOf = (i) => 90 - (Math.floor(i / COLS) + 0.5) * RES;
@@ -128,7 +129,7 @@ export const featureAt = (body, col, i) => {
   return a ? a[i] : NaN;
 };
 function storeFeatures(body, rows) {
-  const f = {};
+  const f = features[body] || {};   // merge: the soil file adds columns to the terrain file's
   const cols = Object.keys(rows[0] || {}).filter((c) => !['body', 'lat', 'lon', 'source_id'].includes(c));
   cols.forEach((c) => { f[c] = new Float32Array(N).fill(NaN); });
   for (const r of rows) {
@@ -183,15 +184,61 @@ function sunwindScore(refS, refW, body, i) {
   return n ? sum / n : NaN;
 }
 
-/** Extra reference values (sun & wind) for a clicked point. */
+/* ---------------- ground & soil composition ----------------
+ * The terrain-data soil grids (terrain_data/out/*_soil*.csv, pipeline/35_soil_features.py):
+ *   Moon:  Lunar Prospector gamma-ray spectrometer (Fe, Si, K, Th), measured from orbit
+ *   Mars:  Mars Odyssey gamma-ray spectrometer (Fe, Si, K, Th, Cl), measured from orbit
+ *   Earth: ISRIC SoilGrids 2.0 topsoil (organic carbon, texture, pH, density) + Fe/Si/K/Th
+ *          ESTIMATED from bedrock type (GLiM lithology x typical rock composition)
+ * Ranges follow terrain_data/config/features.json (iron, potassium, thorium, organic).
+ */
+export const SOIL_FILES = {
+  earth: '../../terrain_data/out/earth_soil_2deg.csv',
+  moon: '../../terrain_data/out/moon_soil.csv',
+  mars: '../../terrain_data/out/mars_soil.csv',
+};
+export const SOIL_FEATURES = [
+  { key: 'iron', label: 'Iron (Fe)', range: 8, unit: ' %', digits: 1 },
+  { key: 'potassium', label: 'Potassium (K)', range: 2, unit: ' %', digits: 2 },
+  { key: 'thorium', label: 'Thorium (Th)', range: 8, unit: ' ppm', digits: 1 },
+  { key: 'organic', label: 'Organic carbon', range: 15, unit: ' g/kg', digits: 0 },
+];
+const soilLoaded = {};
+export function registerSoil(body, rows) { storeFeatures(body, rows); soilLoaded[body] = true; }
+export const hasSoil = (body) => !!soilLoaded[body];
+
+/** Soil values at one cell; organic carbon is 0 on the Moon and Mars (sterile regolith), capped at 30 g/kg on Earth. */
+export function soilAt(body, i) {
+  const soc = featureAt(body, 'soc_g_kg', i);
+  return {
+    iron: featureAt(body, 'fe_pct', i),
+    potassium: featureAt(body, 'k_pct', i),
+    thorium: featureAt(body, 'th_ppm', i),
+    organic: body === 'earth' ? (Number.isNaN(soc) ? NaN : Math.min(soc, 30)) : (soilLoaded[body] ? 0 : NaN),
+  };
+}
+
+function soilScore(ref, body, i) {
+  if (!ref) return NaN;
+  const t = soilAt(body, i);
+  let sum = 0, n = 0;
+  SOIL_FEATURES.forEach((f) => {
+    const a = ref[f.key], b = t[f.key];
+    if (a == null || Number.isNaN(a) || Number.isNaN(b)) return;
+    sum += clamp01(1 - Math.abs(a - b) / f.range); n++;
+  });
+  return n >= 2 ? sum / n : NaN;
+}
+
+/** Extra reference values (sun & wind, soil) for a clicked point. */
 export function refExtras(body, lat, lon) {
   const i = cellIndex(lat, lon);
-  return { solar: solarAt(body, i), wind: windAt(body, i) };
+  return { solar: solarAt(body, i), wind: windAt(body, i), soil: soilAt(body, i) };
 }
 
 /* ---------------- the match ---------------- */
 
-export const DEFAULT_WEIGHTS = { temp: 40, press: 20, terrain: 25, sunwind: 15 };
+export const DEFAULT_WEIGHTS = { temp: 40, press: 20, terrain: 25, sunwind: 15, soil: 15 };
 
 /**
  * ref = { body, lat, lon, mean, high, low, pressure, solar, wind, terrain:{...,sim} }
@@ -201,7 +248,7 @@ export const DEFAULT_WEIGHTS = { temp: 40, press: 20, terrain: 25, sunwind: 15 }
  */
 export function computeMatch(ref, grid, target, { stat, range, scale, weights = DEFAULT_WEIGHTS }) {
   const temp = new Float32Array(N), press = new Float32Array(N), terrain = new Float32Array(N);
-  const sunwind = new Float32Array(N), combo = new Float32Array(N);
+  const sunwind = new Float32Array(N), soil = new Float32Array(N), combo = new Float32Array(N);
   const tg = terrainGrid(target, scale);
   const terrainReal = !tg.sim && !ref.terrain.sim;
   const w = { ...weights, terrain: terrainReal ? weights.terrain : 0 };   // sample terrain never counts
@@ -213,8 +260,9 @@ export function computeMatch(ref, grid, target, { stat, range, scale, weights = 
     press[i] = pcol ? pressScore(ref.pressure, pcol[i]) : NaN;
     terrain[i] = terrainScore(ref.terrain, tg, i);
     sunwind[i] = sunwindScore(ref.solar, ref.wind, target, i);
+    soil[i] = soilScore(ref.soil, target, i);
     let sum = 0, ws = 0;
-    [['temp', temp[i]], ['press', press[i]], ['terrain', terrain[i]], ['sunwind', sunwind[i]]].forEach(([k, v]) => {
+    [['temp', temp[i]], ['press', press[i]], ['terrain', terrain[i]], ['sunwind', sunwind[i]], ['soil', soil[i]]].forEach(([k, v]) => {
       if (!Number.isNaN(v) && w[k] > 0) { sum += v * w[k]; ws += w[k]; }
     });
     combo[i] = ws ? sum / ws : NaN;
@@ -233,17 +281,18 @@ export function computeMatch(ref, grid, target, { stat, range, scale, weights = 
   }
   if (best) {
     const i = best.i;
-    best.scores = { temp: temp[i], press: press[i], terrain: terrain[i], sunwind: sunwind[i], combo: combo[i] };
+    best.scores = { temp: temp[i], press: press[i], terrain: terrain[i], sunwind: sunwind[i], soil: soil[i], combo: combo[i] };
     best.values = {
       mean: grid.mean[i], high: grid.high[i], low: grid.low[i],
       pressure: pcol ? pcol[i] : NaN,
       solar: solarAt(target, i), wind: windAt(target, i),
       slope: tg.slope ? tg.slope[i] : NaN,
       terrain: Object.fromEntries(tg.keys.map((f) => [f.key, tg[f.key][i]])),
+      soil: soilAt(target, i),
     };
     best.terrainKeys = tg.keys;
   }
-  return { target, temp, press, terrain, sunwind, combo, overall: combo, best, terrainSim: !terrainReal, weights: w };
+  return { target, temp, press, terrain, sunwind, soil, combo, overall: combo, best, terrainSim: !terrainReal, weights: w };
 }
 
 /* ---------------- night lights (Earth remoteness) from the bundled NASA Black Marble image ---------------- */
@@ -323,6 +372,27 @@ export const VARIABLES = [
   { id: 'inertia', group: 'Terrain', label: 'Thermal inertia (dust ↔ rock)', get: (b, i) => (b === 'mars' ? (fx(featureAt('mars', 'thermal_inertia_tiu', i), 0, ' TIU') || NA('—'))
     : b === 'moon' ? NA('not in our data yet') : NA('not applicable')) },
   { id: 'rocks', group: 'Terrain', label: 'Rock abundance', get: (b) => (b === 'earth' ? NA('not applicable') : NA('not in our data yet')) },
+  ...[['fe_pct', 'Iron (Fe)', 1, ' %'], ['si_pct', 'Silicon (Si)', 1, ' %'], ['k_pct', 'Potassium (K)', 2, ' %'], ['th_ppm', 'Thorium (Th)', 1, ' ppm']]
+    .map(([col, label, d, u]) => ({ id: col, group: 'Ground & soil', label, get: (b, i) => {
+      const x = fx(featureAt(b, col, i), d, u);
+      if (!x) return NA(b === 'earth' ? 'sea / no rock class' : 'not mapped here');
+      return b === 'earth' ? { v: x.v, text: `${x.text} (est. from rock type)` } : x;
+    } })),
+  { id: 'cl', group: 'Ground & soil', label: 'Chlorine (salts)', get: (b, i) => (b === 'mars' ? (fx(featureAt('mars', 'cl_pct', i), 2, ' %') || NA('not mapped here'))
+    : b === 'moon' ? NA('not measured (very low)') : NA('not in our data yet')) },
+  { id: 'soc', group: 'Ground & soil', label: 'Organic carbon', get: (b, i) => (b === 'earth' ? (fx(featureAt('earth', 'soc_g_kg', i), 1, ' g/kg') || NA('sea / no soil'))
+    : b === 'moon' ? { v: 0, text: '0 (sterile regolith)' } : { v: 0, text: '≈0 (traces only, Curiosity SAM)' }) },
+  { id: 'texture', group: 'Ground & soil', label: 'Clay · silt · sand', get: (b, i) => {
+    if (b === 'moon') return NA('fine regolith, no clay (Apollo samples)');
+    if (b === 'mars') return NA('dust + sand, not mapped');
+    const c = featureAt('earth', 'clay_pct', i), s = featureAt('earth', 'silt_pct', i), a = featureAt('earth', 'sand_pct', i);
+    return Number.isNaN(c) ? NA('sea / no soil') : { v: c, text: `${Math.round(c)} · ${Math.round(s)} · ${Math.round(a)} %` };
+  } },
+  { id: 'stones', group: 'Ground & soil', label: 'Stones (coarse fragments)', get: (b, i) => (b === 'earth' ? (fx(featureAt('earth', 'cfvo_pct', i), 0, ' % by volume') || NA('sea / no soil')) : NA('not mapped')) },
+  { id: 'bdod', group: 'Ground & soil', label: 'Bulk density', get: (b, i) => (b === 'earth' ? (fx(featureAt('earth', 'bdod_g_cm3', i), 2, ' g/cm³') || NA('sea / no soil'))
+    : b === 'moon' ? NA('≈1.5 g/cm³ (Apollo cores, not mapped)') : NA('not mapped')) },
+  { id: 'ph', group: 'Ground & soil', label: 'Soil pH', get: (b, i) => (b === 'earth' ? (fx(featureAt('earth', 'ph_h2o', i), 1, '') || NA('sea / no soil'))
+    : b === 'mars' ? NA('7.7 at the Phoenix site only') : NA('not applicable (no water)')) },
   { id: 'earthvis', group: 'Operations', label: 'Earth visible (radio contact)', get: (b, i) => {
     if (b !== 'moon') return NA('not applicable');
     const lon = Math.abs(lonOf(i));
@@ -342,9 +412,9 @@ export const VARIABLES = [
 ];
 
 export const VARIABLE_SOURCES = {
-  earth: 'NASA POWER (temperature, pressure, water vapour) · WorldClim 2.1 (solar, wind, rain) · NOAA ETOPO 2022 (terrain) · NASA Black Marble (night lights)',
-  moon: 'LRO Diviner (temperature) · LRO LOLA (terrain) · Lunar Prospector (composition) · solar & Earth visibility calculated from position · ice index is a latitude-based estimate',
-  mars: 'Mars Climate Database 6.2 (temperature, pressure, vapour) · MGS MOLA (terrain) · MGS TES (thermal inertia, dust) · Mars Odyssey GRS (hydrogen) · solar calculated',
+  earth: 'NASA POWER (temperature, pressure, water vapour) · WorldClim 2.1 (solar, wind, rain) · NOAA ETOPO 2022 (terrain) · ISRIC SoilGrids 2.0 (topsoil) · GLiM rock types × typical rock chemistry (estimated Fe, Si, K, Th) · NASA Black Marble (night lights)',
+  moon: 'LRO Diviner (temperature) · LRO LOLA (terrain) · Lunar Prospector gamma-ray spectrometer (Fe, Si, K, Th) · solar & Earth visibility calculated from position · ice index is a latitude-based estimate',
+  mars: 'Mars Climate Database 6.2 (temperature, pressure, vapour) · MGS MOLA (terrain) · MGS TES (thermal inertia, dust) · Mars Odyssey gamma-ray spectrometer (hydrogen, Fe, Si, K, Th, Cl) · solar calculated',
 };
 
 /** Whole-body constants (no single place can change these). */

@@ -26,6 +26,8 @@ The temperature grids for the Moon and Mars (`moon_data/moon_grid.csv`, `mars_da
 
 **Odyssey GRS water-equivalent hydrogen.** NASA Mars Odyssey Gamma Ray Spectrometer, PDS dataset ODY-M-GRS-5-ELEMENTS-V1.0, 5-degree smoothed H2O map. NASA data. https://pds-geosciences.wustl.edu/ody/ody-m-grs-5-elements-v1/ . Cite: Feldman, W. C., et al. (2004), Global distribution of near-surface hydrogen on Mars, Journal of Geophysical Research, 109, E09006.
 
+**Odyssey GRS element concentrations (iron, silicon, potassium, thorium, chlorine).** Same PDS dataset as the hydrogen map, the 5-degree smoothed maps `fe_sr_5x5`, `si_sr_5x5`, `k_sr_5x5`, `th_sr_5x5`, `cl_sr_5x5`. Used for `out/mars_soil.csv`. NASA data. https://pds-geosciences.wustl.edu/ody/ody-m-grs-5-elements-v1/ . Cite: Boynton, W. V., et al. (2007), Concentration of H, Si, Cl, K, Fe, and Th in the low- and mid-latitude regions of Mars, Journal of Geophysical Research, 112, E12S99.
+
 **Global geologic map of Mars (SIM 3292).** USGS, 1:20,000,000. Public domain. https://pubs.usgs.gov/sim/3292/ . Cite: Tanaka, K. L., Skinner, J. A., Jr., Dohm, J. M., Irwin, R. P., III, Kolb, E. J., Fortezzo, C. M., Platz, T., Michael, G. G., and Hare, T. M. (2014), Geologic map of Mars: U.S. Geological Survey Scientific Investigations Map 3292, scale 1:20,000,000.
 
 **Mars Climate Database v6.2 surface temperature** (teammates, unchanged). Cite the Mars Climate Database team (LMD, Open University, ESA, CNES) per http://www-mars.lmd.jussieu.fr/ .
@@ -35,6 +37,10 @@ The temperature grids for the Moon and Mars (`moon_data/moon_grid.csv`, `mars_da
 **ETOPO 2022, 60 arc-second surface elevation.** NOAA National Centers for Environmental Information. Public domain. https://www.ncei.noaa.gov/products/etopo-global-relief-model . Cite: NOAA National Centers for Environmental Information (2022), ETOPO 2022 Global Relief Model, doi:10.25921/fd45-gt74.
 
 **GLiM, Global Lithological Map, 0.5-degree grid.** Hartmann and Moosdorf, University of Hamburg, via PANGAEA. Check the PANGAEA page for the exact licence (the data portal usually applies CC BY). https://doi.pangaea.de/10.1594/PANGAEA.788537 . Cite: Hartmann, J., and Moosdorf, N. (2012), The new global lithological map database GLiM: A representation of rock properties at the Earth surface, Geochemistry, Geophysics, Geosystems, 13, Q12004.
+
+**SoilGrids 2.0 topsoil (0-5 cm).** ISRIC World Soil Information. Clay, silt and sand content, soil organic carbon, pH in water, bulk density and coarse fragments, mean predictions at 250 m, fetched through the WCS service resampled to 0.1 degree. CC BY 4.0. https://maps.isric.org/ . Cite: Poggio, L., et al. (2021), SoilGrids 2.0: producing soil information for the globe with quantified spatial uncertainty, SOIL, 7, 217-240.
+
+**Typical rock compositions** (for the ESTIMATED Earth iron, silicon, potassium and thorium in `out/earth_soil_*.csv`). Basalt, granite, shale, sandstone and carbonate from Turekian, K. K., and Wedepohl, K. H. (1961), Distribution of the elements in some major units of the Earth's crust, Geological Society of America Bulletin, 72, 175-192. Metamorphic and unconsolidated cells use the upper continental crust of Rudnick, R. L., and Gao, S. (2003), Composition of the continental crust, Treatise on Geochemistry, 3, 1-64. The class-to-composition table is in `pipeline/35_soil_features.py` (`ROCK_CHEM`).
 
 **Holocene volcanoes.** Smithsonian Institution, Global Volcanism Program, Volcanoes of the World. Free to use with citation. https://volcano.si.edu/ . Cite: Global Volcanism Program, Volcanoes of the World database, Smithsonian Institution, accessed 2026-11-14 (use the version and DOI shown on the Smithsonian page for that date).
 

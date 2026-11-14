@@ -25,6 +25,12 @@
       "earth": {"op": "col", "col": "lith_basic_volcanic_pct", "div": 100}, "moon": {"op": "col", "col": "mare_idx"}, "mars": {"op": "col", "col": "geo_volcanic_pct", "div": 100, "times_scaled": ["thermal_inertia_tiu", 100, 350]} },
     { "id": "crystalline", "label": "Crystalline highlands", "dimensions": ["geology"], "range": 0.6, "unit": "", "digits": 2, "index": true,
       "earth": {"op": "sum", "cols": ["lith_plutonic_pct", "lith_metamorphic_pct"], "div": 100}, "moon": {"op": "oneminus", "col": "mare_idx"}, "mars": {"op": "col", "col": "geo_highland_pct", "div": 100} },
+    { "id": "iron", "label": "Iron in the ground", "dimensions": ["geology"], "range": 8, "unit": " % iron", "digits": 1,
+      "earth": {"op": "col", "col": "fe_pct"}, "moon": {"op": "col", "col": "fe_pct"}, "mars": {"op": "col", "col": "fe_pct"} },
+    { "id": "potassium", "label": "Potassium in the ground", "dimensions": ["geology"], "range": 2, "unit": " % potassium", "digits": 2,
+      "earth": {"op": "col", "col": "k_pct"}, "moon": {"op": "col", "col": "k_pct"}, "mars": {"op": "col", "col": "k_pct"} },
+    { "id": "thorium", "label": "Thorium in the ground", "dimensions": ["geology"], "range": 8, "unit": " ppm thorium", "digits": 1,
+      "earth": {"op": "col", "col": "th_ppm"}, "moon": {"op": "col", "col": "th_ppm"}, "mars": {"op": "col", "col": "th_ppm"} },
     { "id": "volcanic", "label": "Volcanic activity", "dimensions": ["geology"], "range": 1.0, "unit": "", "digits": 2, "index": true,
       "earth": {"op": "col", "col": "volcano_prox_idx"}, "moon": {"op": "const", "value": 0.3}, "mars": {"op": "col", "col": "geo_volcanic_pct", "div": 100} },
     { "id": "temp_mean", "label": "Mean temperature", "dimensions": ["thermal"], "range": 40, "unit": " C", "digits": 0,
@@ -53,6 +59,9 @@
       "earth": {"op": "col", "col": "lavatube_idx"}, "moon": {"op": "col", "col": "lavatube_idx"}, "mars": {"op": "col", "col": "lavatube_idx"} },
     { "id": "barren", "label": "Barren ground", "dimensions": ["habitability"], "range": 0.5, "unit": "", "digits": 2, "index": true,
       "earth": {"op": "col", "col": "barren_pct", "div": 100}, "moon": {"op": "const", "value": 1}, "mars": {"op": "const", "value": 1} },
+    { "id": "organic", "label": "Organic carbon in the soil", "dimensions": ["habitability"], "range": 15, "unit": " g/kg", "digits": 1,
+      "target_show": "none (sterile regolith)",
+      "earth": {"op": "col", "col": "soc_g_kg", "cap": 30}, "moon": {"op": "const", "value": 0}, "mars": {"op": "const", "value": 0} },
     { "id": "extremophile", "label": "Extreme-life setting", "dimensions": ["habitability"], "range": 0.7, "unit": "", "digits": 2, "index": true,
       "earth": {"op": "col", "col": "extremophile_idx", "fallback": "aridity_idx"}, "moon": {"op": "const", "value": 1}, "mars": {"op": "const", "value": 1} },
     { "id": "pressure", "label": "Surface air pressure", "dimensions": ["operations"], "range": 2.5, "unit": " (log10 hPa)", "digits": 1,
@@ -64,6 +73,7 @@
   "_notes": [
     "Moon and Mars cratering use crater_density_5km_n (2-degree cells hold too few 20 km craters to be a stable measure).",
     "Earth temperature columns come from NASA POWER (out/earth_grid_filled / work/power_temp_1deg.npz). Moon and Mars temperatures come from moon_data/moon_grid.csv and mars_data/mars_grid.csv, unchanged.",
+    "Iron, potassium, thorium and organic carbon come from the soil grids (out/*_soil*.csv, pipeline/35_soil_features.py), merged by cell at load time. Moon and Mars elements are orbital gamma-ray measurements; Earth elements are ESTIMATED from bedrock type (GLiM x typical rock composition), Earth organic carbon is SoilGrids 2.0 topsoil.",
     "Gravity, vacuum or thin air, radiation and the lunar night are never scored; see caveats.json.",
     "Landing elevation (Mars: below -2000 m is good, above +2000 m is bad) is a target-side annotation, not a paired comparison."
   ]
