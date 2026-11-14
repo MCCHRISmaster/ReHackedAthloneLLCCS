@@ -1,4 +1,4 @@
-# Analog Atlas — prototype
+# Planetary Comparator (formerly Analog Atlas) — prototype
 
 Interactive 3D Earth globe built on **NASA WebWorldWind**
 (https://github.com/NASAWorldWind/WebWorldWind), first step toward a

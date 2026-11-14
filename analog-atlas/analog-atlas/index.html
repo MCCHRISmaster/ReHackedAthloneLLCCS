@@ -3,12 +3,12 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Analog Atlas — Planetary Analog Command</title>
+  <title>Planetary Comparator — Earth · Moon · Mars</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/style.css">
 </head>
-<body>
+<body class="left-collapsed right-collapsed">
   <!-- Other planets hang here, behind the transparent globe canvas (js/space.js). -->
   <div class="space" id="space" aria-hidden="true"></div>
   <!-- WorldWind draws into this canvas. Everything else is HUD layered on top. -->
@@ -21,8 +21,8 @@
     <div class="brand">
       <span class="brand-mark" aria-hidden="true">◆</span>
       <div>
-        <div class="brand-title">ANALOG ATLAS</div>
-        <div class="brand-sub">PLANETARY ANALOG COMMAND · PROTOTYPE</div>
+        <div class="brand-title">PLANETARY COMPARATOR</div>
+        <div class="brand-sub">EARTH · MOON · MARS ANALOG FINDER · NASA DATA</div>
       </div>
     </div>
     <div class="top-center">
@@ -41,11 +41,40 @@
     </div>
   </header>
 
-  <div class="left-col">
-    <aside class="panel temp-panel" id="temp-panel" aria-live="polite">
-      <div class="panel-head"><span>TEMPERATURE MATCH</span><span class="src-tag">NASA POWER</span></div>
-      <div class="temp-body" id="temp-body"></div>
+  <!-- Top centre: overall match for each other world (js/matchui.js) -->
+  <div class="match-bar" id="match-bar" aria-live="polite"></div>
+
+  <!-- Edge tabs that open / close the side panels (both start collapsed) -->
+  <button class="side-tab left" id="tab-left" aria-expanded="false" aria-controls="left-col" title="Show or hide Compare Worlds">
+    <span class="side-arrow" aria-hidden="true">▸</span><span class="side-label">COMPARE WORLDS</span>
+  </button>
+  <!-- Right-edge rail: MATCH tab + temperature / pressure / terrain symbols (always visible) -->
+  <div class="right-rail" id="right-rail">
+    <button class="side-tab right" id="tab-right" aria-expanded="false" aria-controls="site-detail" title="Show or hide the match details">
+      <span class="side-arrow" aria-hidden="true">◂</span><span class="side-label">MATCH</span><span class="side-badge" id="tab-right-badge"></span>
+    </button>
+    <div class="rail-metrics" id="rail-metrics" role="group" aria-label="Match by measurement"></div>
+  </div>
+
+  <div class="left-col" id="left-col">
+    <aside class="panel match-left-panel" aria-live="polite">
+      <div class="panel-head"><span>COMPARE WORLDS</span><span class="src-tag">NASA DATA</span></div>
+      <div class="match-left" id="match-left"></div>
     </aside>
+    <!-- Bottom left: advanced options (js/matchui.js renderAdvanced + imagery list) -->
+    <aside class="panel adv-panel" id="adv-panel">
+      <div class="panel-head"><span>ADVANCED OPTIONS</span></div>
+      <div class="adv-content">
+        <div id="adv-body"></div>
+        <div class="adv-lbl adv-imagery-lbl">IMAGERY</div>
+        <div class="imagery-list" id="imagery-list"></div>
+      </div>
+    </aside>
+
+  </div>
+
+  <!-- Teammate panels kept (hidden) so their code keeps running; removed from the layout by request -->
+  <div class="legacy-panels" hidden>
     <aside class="panel site-panel" id="site-list-panel">
       <div class="panel-head">
         <span id="site-list-title">ANALOG SITES</span><span class="count" id="site-count">0</span>
@@ -56,7 +85,6 @@
     </aside>
     <aside class="panel imagery-panel" id="imagery-panel">
       <div class="panel-head"><span>IMAGERY</span><span class="src-tag">NASA</span></div>
-      <div class="imagery-list" id="imagery-list"></div>
     </aside>
     <aside class="panel minimap-panel" id="minimap" aria-label="Mini map"></aside>
   </div>

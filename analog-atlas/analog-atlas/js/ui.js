@@ -485,7 +485,7 @@ const HELP_KEY = 'analog-atlas-help-seen';
 export function initHelp() {
   const card = $('help-card');
   card.innerHTML = `
-    <div class="help-kicker">WELCOME TO ANALOG ATLAS</div>
+    <div class="help-kicker">WELCOME TO PLANETARY COMPARATOR</div>
     <h2 id="help-title">How to explore</h2>
     <ul class="help-list">
       <li><span class="help-key">DRAG</span><span>Spin the planet. <b>Scroll</b> or <b>＋ / －</b> to zoom.</span></li>

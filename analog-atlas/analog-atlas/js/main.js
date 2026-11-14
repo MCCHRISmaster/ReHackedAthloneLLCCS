@@ -12,6 +12,8 @@ import { SpaceBackdrop } from './space.js';
 import * as ui from './ui.js';
 import * as temp from './temperature.js';
 import * as dataTab from './datatab.js';
+import * as match from './match.js';
+import * as mui from './matchui.js';
 
 const state = {
   body: 'earth',
@@ -31,6 +33,8 @@ const state = {
     grids: {},            // body -> grid from CSV
     gridError: null,
   },
+  match: { metric: 'temp', active: null, results: {}, key: '', open: false }, // location match HUD
+  ui: { left: false, right: false },   // side panels: both start collapsed
   probe: null,            // { lat, lon } of the probed point
   probeResult: null,
   scale: 'human',         // operating scale for probes: 'human' | 'rover'
@@ -94,95 +98,206 @@ function syncPlanetLooks() {
   });
 }
 
-/* ---------------- temperature match ---------------- */
+/* ---------------- location match (whiteboard layout) ---------------- */
 
-const tempHandlers = {
+const targetsOf = (ref) => Object.keys(BODIES).filter((b) => BODIES[b].enabled && b !== ref.body);
+let landReady = false;
+
+function weightsText() {
+  const anyReal = Object.values(state.match.results).some((r) => !r.terrainSim);
+  return anyReal ? '50% temperature + 25% pressure + 25% terrain'
+    : '65% temperature + 35% pressure (terrain is sample data, so it is shown but not counted)';
+}
+
+/** Recompute every other world's match for the current reference (cached by inputs). */
+function computeResults() {
+  const t = state.temp, m = state.match;
+  if (!t.ref) { m.results = {}; m.key = ''; return; }
+  const key = [t.ref.body, t.ref.lat, t.ref.lon, t.stat, t.range, state.scale, Object.keys(t.grids).join(','), landReady].join('|');
+  if (key === m.key) return;
+  m.key = key;
+  m.results = {};
+  targetsOf(t.ref).forEach((b) => {
+    const g = t.grids[b];
+    if (g) m.results[b] = match.computeMatch(t.ref, g, b, { stat: t.stat, range: t.range, scale: state.scale });
+  });
+  if (!m.active || !m.results[m.active]) m.active = targetsOf(t.ref)[0];
+}
+
+const leftHandlers = {
+  onMetric: (k) => { state.match.metric = k; refreshTemp(); },
+  onPickMap: (b) => {
+    const t = state.temp, r = state.match.results[b];
+    if (t.ref && b !== t.ref.body && r && r.best) { state.match.active = b; goToSpot(b, r.best.lat, r.best.lon); }
+    else if (t.ref && b === t.ref.body) goToSpot(b, t.ref.lat, t.ref.lon);
+    else switchBody(b);
+  },
+  onClear: () => { state.temp.ref = null; state.match.open = false; ui.showBriefing(null); refreshTemp(); },
+};
+
+const advHandlers = {
   onStat: (s) => { state.temp.stat = s; refreshTemp(); },
   onRange: (v) => { state.temp.range = v; scheduleHeat(); },
   onOpacity: (o) => { state.temp.opacity = o; globe.setHeatOpacity(o); },
   onGridLines: (on) => { state.temp.gridLines = on; refreshTemp(); },
-  onGoto: (b) => switchBody(b),
-  onClear: () => { state.temp.ref = null; refreshTemp(); },
+  onScale: (s) => {
+    state.scale = s;
+    const r = state.temp.ref;
+    if (r) r.terrain = match.terrainAt(r.body, r.lat, r.lon, s);
+    refreshTemp();
+  },
+  onProbe: () => {   // teammate's detailed multi-metric probe (sample data)
+    const r = state.temp.ref;
+    if (!r) return;
+    const open = () => { probeAt(r.lat, r.lon); setRightOpen(true); };
+    if (state.body === r.body) open();
+    else switchBody(r.body, open);
+  },
 };
 
-/**
- * Which body shows the heat map for the current reference:
- *   reference on Earth      -> Moon and Mars  (forward search)
- *   reference on Moon/Mars  -> Earth only     (reverse search)
- */
-function heatShownOn(bodyId) {
-  const ref = state.temp.ref;
-  if (!ref) return false;
-  return ref.body === 'earth' ? bodyId !== 'earth' : bodyId === 'earth';
+const panelHandlers = {
+  onTarget: (b) => { state.match.active = b; renderPanel(); },
+  onGo: () => { const r = state.match.results[state.match.active]; if (r && r.best) goToSpot(r.target, r.best.lat, r.best.lon); },
+  onClose: () => { state.panel = null; setRightOpen(false); },
+  onBriefing: () => { const id = state.temp.ref && state.temp.ref.siteId; if (id) { state.match.open = false; selectSite(byId[id], { fly: false }); } },
+};
+
+/** Fly to a spot, switching world first if needed. */
+function goToSpot(bodyId, lat, lon) {
+  const fly = () => { globe.setAutoRotate(false); setRotateButton(false); globe.flyTo(lat, lon, globe.radius * 1.2); };
+  if (state.body === bodyId) fly(); else switchBody(bodyId, fly);
 }
 
-/** Re-render the panel and the globe overlays for the current body. */
-function refreshTemp() {
-  const t = state.temp;
-  ui.renderTempPanel({
-    ...t, body: state.body, grid: t.grids[state.body], heatHere: heatShownOn(state.body),
-  }, tempHandlers);
-  const onRefBody = t.ref && t.ref.body === state.body;
-  globe.setReference(onRefBody ? { ...t.ref, label: t.ref.label.toUpperCase() } : null);
+/** Re-render the match HUD and the globe overlays for the current world. */
+function refreshTemp({ keepAdvanced = false } = {}) {
+  computeResults();
+  const t = state.temp, m = state.match;
+  const targets = t.ref ? targetsOf(t.ref) : [];
+  mui.renderMatchBar({ ref: t.ref, loading: t.loading, targets, results: m.results }, {
+    onPick: (b) => { m.active = b; clearProbe(); state.panel = null; setRightOpen(true); },
+  });
+  mui.renderLeft({ current: state.body, ref: t.ref, loading: t.loading, error: t.error, metric: m.metric,
+    results: m.results, online: state.online, stat: t.stat }, leftHandlers);
+  if (!keepAdvanced) {
+    mui.renderAdvanced({ stat: t.stat, range: t.range, opacity: t.opacity, gridLines: t.gridLines,
+      scale: state.scale, ref: t.ref, weightsText: weightsText() }, advHandlers);
+  }
+  renderPanel();
   drawHeat();
 }
 
+/** Right panel: the match card, unless a site briefing or the detailed probe is showing. */
+function renderPanel(force = false) {
+  const t = state.temp, m = state.match;
+  updateSideTabs();
+  if (!force && (state.panel === 'site' || state.panel === 'probe')) return;
+  state.panel = 'match';
+  mui.renderMatchPanel({ ref: t.ref, loading: t.loading, targets: t.ref ? targetsOf(t.ref) : [], active: m.active,
+    result: t.ref ? m.results[m.active] : null, stat: t.stat, isSite: !!(t.ref && t.ref.siteId) }, panelHandlers);
+}
+
+/* ---------------- collapsible side panels (both start collapsed) ---------------- */
+
+function setLeftOpen(open) {
+  state.ui.left = open;
+  document.body.classList.toggle('left-collapsed', !open);
+  updateSideTabs();
+}
+
+function setRightOpen(open) {
+  state.ui.right = open;
+  document.body.classList.toggle('right-collapsed', !open);
+  if (open && state.panel !== 'site' && state.panel !== 'probe') renderPanel(true);
+  updateSideTabs();
+}
+
+/** Edge tabs: arrow direction + the best overall % on the right tab once a location is picked. */
+function updateSideTabs() {
+  const l = document.getElementById('tab-left'), r = document.getElementById('tab-right');
+  if (!l || !r) return;
+  l.setAttribute('aria-expanded', String(state.ui.left));
+  l.querySelector('.side-arrow').textContent = state.ui.left ? '◂' : '▸';
+  r.setAttribute('aria-expanded', String(state.ui.right));
+  r.querySelector('.side-arrow').textContent = state.ui.right ? '▸' : '◂';
+  const best = Object.values(state.match.results).reduce((mx, x) => (x.best && x.best.overall > mx ? x.best.overall : mx), -1);
+  const badge = document.getElementById('tab-right-badge');
+  badge.textContent = state.temp.ref && best >= 0 ? `${Math.round(best * 100)}%` : '';
+  r.classList.toggle('has-result', !!badge.textContent);
+  // 🌡️ ⏲️ ⛰️ rail: scores for the world currently shown in the match panel
+  mui.renderRail(state.temp.ref ? state.match.results[state.match.active] : null, { onMetric: onRailMetric });
+}
+
+/** Tap a rail symbol: open the right panel on that measurement's details (tap again to hide them). */
+function onRailMetric(k) {
+  const showing = state.ui.right && state.panel === 'match' && mui.getOpenMetric() === k;
+  mui.setOpenMetric(showing ? null : k);
+  clearProbe();
+  if (state.panel === 'site') { state.panel = null; ui.showBriefing(null); state.selectedId = null; }
+  state.panel = null;
+  setRightOpen(true);
+  renderPanel(true);
+}
+
+/** Globe overlays: crosshair on your location's world; heat map + best-match pin on every other world. */
 function drawHeat() {
-  const t = state.temp, grid = t.grids[state.body];
-  if (!heatShownOn(state.body) || !grid) { globe.setHeatmap(null); globe.setBestMatch(null); return; }
-  const target = t.ref[t.stat];
-  globe.setHeatmap(temp.renderMatchCanvas(grid, t.stat, target, t.range, { gridLines: t.gridLines }));
-  const s = temp.summarize(grid, t.stat, target, t.range);
-  // Best-match marker: recomputed for whichever globe is showing, so it is always on the 3D model
-  globe.setBestMatch(s && s.best > 0
-    ? { lat: s.lat, lon: s.lon, label: `BEST MATCH ${Math.round(s.best * 100)}% · ${s.temp.toFixed(1)}°C` }
-    : null);
-  ui.updateTempSummary(s, t, () => {
-    globe.setAutoRotate(false);
-    setRotateButton(false);
-    globe.flyTo(s.lat, s.lon, globe.radius * 1.2);
-  });
+  const t = state.temp, m = state.match;
+  const onRef = t.ref && t.ref.body === state.body;
+  globe.setReference(onRef ? { ...t.ref, label: t.ref.label.toUpperCase() } : null);
+  const r = t.ref && !onRef ? m.results[state.body] : null;
+  if (!r) { globe.setHeatmap(null); globe.setBestMatch(null); return; }
+  globe.setHeatmap(match.renderScoreCanvas(r[m.metric], { gridLines: t.gridLines }));
+  globe.setBestMatch(r.best ? { lat: r.best.lat, lon: r.best.lon,
+    label: r.best.closestOnly ? `CLOSEST (${Math.round(r.best.gap)}°C APART)` : `BEST MATCH ${Math.round(r.best.overall * 100)}%` } : null);
 }
 
 let heatQueued = false;
-function scheduleHeat() {             // slider drags: redraw at most once per frame
+function scheduleHeat() {             // slider drags: redraw at most once per frame, keep the slider alive
   if (heatQueued) return;
   heatQueued = true;
-  requestAnimationFrame(() => { heatQueued = false; drawHeat(); });
+  requestAnimationFrame(() => { heatQueued = false; refreshTemp({ keepAdvanced: true }); });
+}
+
+function gridPressure(bodyId, lat, lon) {
+  const g = state.temp.grids[bodyId], col = g && g.columns && g.columns.pressure_pa;
+  return col ? col[match.cellIndex(lat, lon)] : NaN;
 }
 
 let refToken = 0;
-async function setTempReference(lat, lon, label) {
+async function setTempReference(lat, lon, label, siteId = null) {
   const t = state.temp, token = ++refToken;
   t.loading = true; t.error = null;
   refreshTemp();
   try {
     const v = await temp.fetchEarthTemps(lat, lon);
     if (token !== refToken) return;   // a newer click won
-    t.ref = { body: 'earth', lat, lon, label: label || 'Selected point', ...v };
+    if (Number.isNaN(v.pressure)) v.pressure = gridPressure('earth', lat, lon);
+    t.ref = { body: 'earth', lat, lon, label: label || 'Selected point', siteId, ...v };
   } catch (err) {
     if (token !== refToken) return;
     // NASA POWER unreachable: fall back to the 2° Earth grid cell (same POWER climatology, cell average)
     const g = t.grids.earth, v = g && temp.cellTemps(g, lat, lon);
-    if (v && !Number.isNaN(v.mean)) t.ref = { body: 'earth', lat, lon, label: `${label || 'Selected point'} (2° grid)`, ...v };
-    else t.error = `Couldn't get temperature: ${err.message}`;
+    if (v && !Number.isNaN(v.mean)) {
+      t.ref = { body: 'earth', lat, lon, label: `${label || 'Selected point'} (2° grid)`, siteId, ...v, pressure: gridPressure('earth', lat, lon) };
+    } else t.error = `Couldn't get temperature: ${err.message}`;
   }
+  if (t.ref && t.ref.body === 'earth' && t.ref.lat === lat && t.ref.lon === lon) t.ref.terrain = match.terrainAt('earth', lat, lon, state.scale);
   t.loading = false;
   refreshTemp();
 }
 
-/** Reverse search: reference temperature read from the Moon/Mars grid cell. */
-function setBodyReference(bodyId, lat, lon, label) {
+/** Location on the Moon or Mars: everything read from that world's grid cell. */
+function setBodyReference(bodyId, lat, lon, label, siteId = null) {
   const t = state.temp, grid = t.grids[bodyId];
   ++refToken;                          // cancels any Earth lookup still in flight
   t.loading = false;
-  if (!grid) { t.error = `The ${BODIES[bodyId].label} temperature grid isn't loaded.`; refreshTemp(); return; }
+  if (!grid) { t.error = `The ${BODIES[bodyId].label} data grid isn't loaded.`; refreshTemp(); return; }
   const v = temp.cellTemps(grid, lat, lon);
   if (Number.isNaN(v.mean)) {
     t.error = `No ${BODIES[bodyId].label} temperature data at this point.`;
   } else {
     t.error = null;
-    t.ref = { body: bodyId, lat, lon, label: label || `${bodyId === 'moon' ? 'Moon' : 'Mars'} point`, ...v };
+    t.ref = { body: bodyId, lat, lon, label: label || `${bodyId === 'moon' ? 'Moon' : 'Mars'} point`, siteId, ...v,
+      pressure: gridPressure(bodyId, lat, lon), terrain: match.terrainAt(bodyId, lat, lon, state.scale) };
   }
   refreshTemp();
 }
@@ -190,12 +305,14 @@ function setBodyReference(bodyId, lat, lon, label) {
 function tempReadout(pos) {
   const t = state.temp, grid = t.grids[state.body];
   if (!pos || !grid) { ui.updateTempReadout(null); return; }
-  if (state.body === 'earth' && !heatShownOn('earth')) { ui.updateTempReadout(null); return; } // Earth temps come from NASA POWER on click
-  const i = temp.cellIndex(pos.lat, pos.lon);
+  const i = match.cellIndex(pos.lat, pos.lon);
   const v = grid[t.stat][i];
   if (Number.isNaN(v)) { ui.updateTempReadout('no data'); return; }
   let text = `${v.toFixed(1)}°C ${temp.STATS[t.stat].label}`;
-  if (heatShownOn(state.body)) text += ` · ${Math.round(temp.matchValue(grid, i, t.stat, t.ref[t.stat], t.range) * 100)}% MATCH`;
+  const p = grid.columns && grid.columns.pressure_pa ? grid.columns.pressure_pa[i] : NaN;
+  if (!Number.isNaN(p)) text += ` · ${mui.fmtP(p)}`;
+  const r = t.ref && t.ref.body !== state.body ? state.match.results[state.body] : null;
+  if (r) text += ` · ${Math.round((r.overall[i] || 0) * 100)}% MATCH`;
   ui.updateTempReadout(text);
 }
 
@@ -286,14 +403,16 @@ function selectSite(site, { fly = true } = {}) {
   if (site || state.panel === 'site') {
     state.panel = site ? 'site' : null;
     ui.showBriefing(site, { links: site ? linksFor(site) : [], onClose: () => selectSite(null), onJump: (s) => selectSite(s) });
+    if (site) setRightOpen(true);            // a site briefing was asked for: open the right panel
+    else if (state.ui.right) renderPanel(true);  // briefing closed: back to the match card
   }
   refreshSites();
   if (site && fly) {
     globe.setAutoRotate(false);
     setRotateButton(false);
     globe.flyTo(site.lat, site.lon);
-    if (site.body === 'earth') setTempReference(site.lat, site.lon, site.name);
-    else setBodyReference(site.body, site.lat, site.lon, site.name);
+    if (site.body === 'earth') setTempReference(site.lat, site.lon, site.name, site.id);
+    else setBodyReference(site.body, site.lat, site.lon, site.name, site.id);
   }
 }
 
@@ -328,7 +447,7 @@ function clearProbe() {
   if (!globe.probeLayer) return;
   globe.setProbe(null);
   minimap.setProbe(null);
-  if (had && state.panel === 'probe') closePanel();
+  if (had && state.panel === 'probe') { closePanel(); if (state.ui.right) renderPanel(true); }
 }
 
 /** Go to the best-matching spot on the Moon / Mars and probe it there. */
@@ -424,7 +543,10 @@ async function init() {
   globe
     .on('select', (site) => { if (site) selectSite(site); })
     .on('probe', (p) => {
-      probeAt(p.lat, p.lon);              // teammate's multi-metric probe (right panel)
+      // Location match: open the match card (teammate's detailed probe is in Advanced options)
+      clearProbe();
+      if (state.panel === 'site') selectSite(null);
+      state.match.open = true;
       if (ui.isSimple()) globe.centreOn(p.lat, p.lon);   // Simple view: bring the clicked spot to the middle
       // temperature reference for the heat map (left panel): Earth via NASA POWER, Moon/Mars from the grid
       if (state.body === 'earth') setTempReference(p.lat, p.lon, 'Selected point');
@@ -446,8 +568,13 @@ async function init() {
   ui.makeCollapsible(document.getElementById('site-list-panel'), 'sites');
   ui.makeCollapsible(document.getElementById('imagery-panel'), 'imagery', { simpleCollapsed: true });
   ui.makeCollapsible(document.getElementById('minimap'), 'minimap');
+  ui.makeCollapsible(document.getElementById('adv-panel'), 'advanced', { simpleCollapsed: true });
 
   bindControls();
+  document.getElementById('tab-left').onclick = () => setLeftOpen(!state.ui.left);
+  document.getElementById('tab-right').onclick = () => setRightOpen(!state.ui.right);
+  setLeftOpen(false);
+  setRightOpen(false);
   setBody('earth');
   space.setActive('earth');
   // measure the home-view globe size once it has drawn (used to size the fly-in planet)
@@ -455,7 +582,7 @@ async function init() {
     const r = globe.screenRadiusPx();
     if (r > 0) homeRadiusRatio = r / window.innerHeight;
   }, 600);
-  loadLandMask().then(warmUp);
+  loadLandMask().then(() => { landReady = true; refreshTemp(); warmUp(); });
   loadGrids();
   dataTab.initDataTab({ grids: () => state.temp.grids });
   window.analogAtlas = { globe, state, SITES, setBody, switchBody, selectSite, probeAt, setTactical, setTempReference, setBodyReference }; // console debugging
