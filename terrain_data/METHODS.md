@@ -71,7 +71,7 @@ Not built: Mars dust-storm counts (MDAD), TES albedo, and the Mars cave catalog.
 | `lavatube_idx` | basic volcanic share x max(closeness to a Holocene volcano, closeness to a listed lava tube), each 1 within 50 km and 0 beyond 300 km. | subsurface |
 | `pressure_hpa` | 1013.25 x (1 - 2.25577e-5 x elevation)^5.2559. | operations |
 | `solar_idx` | `srad_kj_m2_day` / 30,000, capped at 1. Earth sunlight is measured surface radiation; Moon and Mars use the geometric proxy above, so this comparison is the roughest in the list. | thermal |
-| `temp_mean_c`, `temp_high_c`, `temp_low_c` | NASA POWER climatology (surface skin temperature, 2001 to 2025), the same product and method as the team's `earth_grid.csv`, completed over every land box. | thermal |
+| `temp_mean_c`, `temp_high_c`, `temp_low_c` | NASA POWER climatology (surface skin temperature, 2001 to 2025), the same product and method as the team's `earth_grid.csv`, completed over every 10-degree box, ocean included, so the 2-degree grid has no blank cell and passes the team checker. Over the sea the value is the sea-surface skin temperature; scoring only uses land cells. | thermal |
 
 **Why the plan changed.** The build prompt called for NASA NEO products (vegetation, aerosol, snow, MODIS land temperature). NEO no longer serves data files: every data address returns a web page instead. The vegetation, dust and snow features became the climate proxies above, and the MODIS temperature fallback became a full NASA POWER pull. Anyone who restores a real NDVI or aerosol product should replace `barren_pct` and `dust_idx` first.
 

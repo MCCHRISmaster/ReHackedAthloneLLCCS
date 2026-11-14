@@ -154,3 +154,15 @@ Run Python as `terrain_data/.venv/Scripts/python.exe`. Model was switched to Son
 - 2026-11-14 17:10 earth GLiM: 0.5 deg grid, 16 classes, 23369 1-degree cells covered
 - 2026-11-14 17:10 earth volcanoes: 1214 Holocene volcanoes from GVP
 - 2026-11-14 17:10 earth features built; sources ['etopo2022', 'glim_v1', 'gvp_votw', 'curated_caves;curated_impacts', 'worldclim_2_1', 'nasa_power_clim', 'natural_earth', 'earth_climate_proxy']; missing []
+- 2026-11-14 17:37 POWER temperature pull: 648 boxes, 0 failed requests
+- 2026-11-14 17:38 earth GLiM: 0.5 deg grid, 16 classes, 23369 1-degree cells covered
+- 2026-11-14 17:38 earth volcanoes: 1214 Holocene volcanoes from GVP
+- 2026-11-14 17:38 earth features built; sources ['etopo2022', 'glim_v1', 'gvp_votw', 'curated_caves;curated_impacts', 'worldclim_2_1', 'nasa_power_clim', 'natural_earth', 'earth_climate_proxy']; missing []
+
+## Final run (2026-11-14 ~17:50) DONE
+- NASA POWER pull completed for all 648 boxes (ocean included): out/earth_grid_power_full.csv and out/earth_grid_filled.csv have a value in all 16,200 cells and pass prototype/tools/csv_to_grid.py --check. 1 request failed in the land pull (30-40N, 90-100E, Qaidam) and was retried successfully.
+- 20_earth_features.py --force (50 feature columns incl. temp_*), 50_score.py, 60_export.py, 70_validate.py: all hard checks PASS (structure, sources, team checker x4, JS vs Python on 10 pairs, Athlone card).
+- Tuning: volcanic range 0.7 -> 1.0 (METHODS.md section 8). Findings of the classic-analog table in METHODS.md section 9.
+- Athlone: 44 raw vs Jezero, 19 vs Shackleton; biggest loss is rainfall (1,058 mm a year vs bone dry). All 132 sites.json entries carry eight score keys.
+- NOT DONE, needs the operator: wiring sites.json and the eighth bar into the globe (teammate files; text patch in HANDOFF.md), pushing the branch, opening a pull request.
+- Detail pages: http://localhost:8000/terrain_data/demo/index.html?id=athlone and .../demo/live.html (server: node prototype/server.js . 8000 from the repo root).

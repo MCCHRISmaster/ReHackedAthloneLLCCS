@@ -42,6 +42,8 @@ const SOURCE_NAMES = {
 
 The build prompt planned a MODIS temperature fallback; NASA's NEO service no longer serves the data, so `earth_grid_filled.csv` uses NASA POWER, the same source and method as the team's file, completed for every land cell. If your file loader takes the first file that works, put the filled file first instead.
 
+The file has a value in all 16,200 cells and passes `prototype/tools/csv_to_grid.py --check`. Over the sea the value is POWER's sea-surface skin temperature, so mask oceans with `land_pct` from `terrain_data/out/earth_features_2deg.csv` (blank there where a cell has no land) if you only want land in the heat map.
+
 ## Step 3. Use `sites.json` instead of `sites.js`
 
 `js/main.js`, replace line 5:
