@@ -1,0 +1,2 @@
+site_id,name,body,lat,lon,site_type,temp_mean_c,temp_high_c,temp_low_c,elevation_m,notes,source_id
+haughton_crater,Haughton Crater,earth,75.38,-89.68,candidate_analog,-14.8,1.4,-33.6,,,nasa_power_clim

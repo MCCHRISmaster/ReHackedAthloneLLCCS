@@ -1,0 +1,3 @@
+# raw Mars Climate Database downloads (rebuilt by build_mars_grid.py)
+mcd_cache/
+__pycache__/
