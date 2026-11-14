@@ -1,6 +1,9 @@
 #include <Wire.h>
 #include <MPU6050_light.h>
 
+// Pin SCL to A5
+// Pin SDA to A4
+
 MPU6050 mpu(Wire);
 unsigned long timer = 0;
 
