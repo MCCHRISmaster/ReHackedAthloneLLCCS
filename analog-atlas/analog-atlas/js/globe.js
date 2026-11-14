@@ -5,8 +5,9 @@
  * All WorldWind-specific code lives here. The rest of the app uses:
  *   setBody(bodyId), setBasemap(layerId), setTactical(on), setSites(sites),
  *   highlight(id), setSelected(id),
+ *   setProbe({ lat, lon, radiusM } | null), cameraState(), screenRadiusPx(),
  *   flyTo(lat, lon, range), zoomBy(f), resetView(), setAutoRotate(on),
- *   on('select' | 'hover' | 'cursor' | 'camera', fn)
+ *   on('select' | 'probe' | 'space' | 'pointer' | 'hover' | 'cursor' | 'camera', fn)
  */
 import { CAMERA, BODIES, TACTICAL } from './config.js';
 import {
@@ -113,6 +114,8 @@ export class GlobeView {
     this.siteLayer = add(new WorldWind.RenderableLayer('Sites'));
     this.pulseLayer = add(new WorldWind.RenderableLayer('Selection'));
     this.pulse = null;
+    this.probeLayer = add(new WorldWind.RenderableLayer('Probe'));
+    this.probeLayer.pickEnabled = false;
     this.placemarks.clear();
     this.highlighted = null;
     this.selectedId = null;
@@ -288,6 +291,49 @@ export class GlobeView {
     this.wwd.redraw();
   }
 
+  /* ---------------- point probe ---------------- */
+  probeSprite(color, size = 96) {
+    const key = 'probe' + color;
+    if (this.markerCache[key]) return this.markerCache[key];
+    const c = document.createElement('canvas');
+    c.width = c.height = size;
+    const g = c.getContext('2d');
+    const m = size / 2;
+    g.strokeStyle = color; g.lineWidth = 3;
+    g.beginPath(); g.arc(m, m, m * 0.42, 0, Math.PI * 2); g.stroke();
+    g.lineWidth = 2;
+    [[0, -1], [0, 1], [-1, 0], [1, 0]].forEach(([dx, dy]) => {
+      g.beginPath(); g.moveTo(m + dx * m * 0.18, m + dy * m * 0.18); g.lineTo(m + dx * m * 0.95, m + dy * m * 0.95); g.stroke();
+    });
+    g.fillStyle = color; g.fillRect(m - 2.5, m - 2.5, 5, 5);
+    return (this.markerCache[key] = new WorldWind.ImageSource(c));
+  }
+
+  /** Crosshair + operating-radius circle at a probed point; null clears it. */
+  setProbe(p) {
+    this.probeLayer.removeAllRenderables();
+    if (p) {
+      const color = this.body.tactical.accent;
+      const attrs = new WorldWind.PlacemarkAttributes(null);
+      attrs.imageSource = this.probeSprite(color);
+      attrs.imageScale = 0.55;
+      attrs.imageOffset = new WorldWind.Offset(WorldWind.OFFSET_FRACTION, 0.5, WorldWind.OFFSET_FRACTION, 0.5);
+      const pm = new WorldWind.Placemark(new WorldWind.Position(p.lat, p.lon, 0), false, attrs);
+      pm.altitudeMode = WorldWind.CLAMP_TO_GROUND;
+      pm.alwaysOnTop = true;
+      this.probeLayer.addRenderable(pm);
+
+      const ring = new WorldWind.ShapeAttributes(null);
+      const n = parseInt(color.slice(1), 16);
+      const rgb = [((n >> 16) & 255) / 255, ((n >> 8) & 255) / 255, (n & 255) / 255];
+      ring.outlineColor = new WorldWind.Color(...rgb, 0.95);
+      ring.interiorColor = new WorldWind.Color(...rgb, 0.14);
+      ring.outlineWidth = 2;
+      this.probeLayer.addRenderable(new WorldWind.SurfaceCircle(new WorldWind.Location(p.lat, p.lon), p.radiusM, ring));
+    }
+    this.wwd.redraw();
+  }
+
   highlight(siteId) {
     if (this.highlighted) this.highlighted.highlighted = false;
     this.highlighted = siteId ? this.placemarks.get(siteId) || null : null;
@@ -349,23 +395,48 @@ export class GlobeView {
     let down = null;
     c.addEventListener('pointerdown', (e) => { down = { x: e.clientX, y: e.clientY }; });
     c.addEventListener('pointerup', (e) => {
-      if (!down || Math.hypot(e.clientX - down.x, e.clientY - down.y) > 5) return;
+      if (!down || Math.hypot(e.clientX - down.x, e.clientY - down.y) > 5 || e.button !== 0) return;
+      // marker → site briefing; bare ground → point probe; empty space → backdrop click
       const site = this.pickSite(e.clientX, e.clientY);
-      this.emit('select', site);
-      if (!site) {
-        // Click on bare ground: report the surface position (used for the Earth reference)
-        const t = this.wwd.pickTerrain(this.wwd.canvasCoordinates(e.clientX, e.clientY)).terrainObject();
-        if (t) this.emit('ground', { lat: t.position.latitude, lon: t.position.longitude });
-      }
+      if (site) { this.emit('select', site); return; }
+      const t = this.terrainAt(e.clientX, e.clientY);
+      if (t) this.emit('probe', t);
+      else this.emit('space', { x: e.clientX, y: e.clientY });
     });
 
     c.addEventListener('pointermove', (e) => {
       const site = this.pickSite(e.clientX, e.clientY);
-      c.style.cursor = site ? 'pointer' : '';
       this.emit('hover', site);
-      const t = this.wwd.pickTerrain(this.wwd.canvasCoordinates(e.clientX, e.clientY)).terrainObject();
-      this.emit('cursor', t ? { lat: t.position.latitude, lon: t.position.longitude } : null);
+      const t = this.terrainAt(e.clientX, e.clientY);
+      c.style.cursor = site ? 'pointer' : t ? 'crosshair' : '';
+      this.emit('cursor', t);
+      this.emit('pointer', { x: e.clientX, y: e.clientY, onGlobe: !!(site || t) });
     });
+  }
+
+  terrainAt(x, y) {
+    const t = this.wwd.pickTerrain(this.wwd.canvasCoordinates(x, y)).terrainObject();
+    return t ? { lat: t.position.latitude, lon: t.position.longitude } : null;
+  }
+
+  /** Camera pose, for the minimap and the space backdrop. */
+  cameraState() {
+    const nav = this.wwd.navigator;
+    return { lat: nav.lookAtLocation.latitude, lon: nav.lookAtLocation.longitude, range: nav.range, heading: nav.heading, tilt: nav.tilt };
+  }
+
+  /** On-screen radius of the globe disc in CSS px (found by probing outward from the centre). */
+  screenRadiusPx() {
+    const r = this.canvas.getBoundingClientRect();
+    const cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+    const max = Math.hypot(r.width, r.height) / 2;
+    if (this.terrainAt(cx + max, cy)) return max; // globe fills the screen
+    let lo = 0, hi = max;
+    for (let i = 0; i < 12; i++) {
+      const mid = (lo + hi) / 2;
+      if (this.terrainAt(cx + mid, cy)) lo = mid; else hi = mid;
+    }
+    return lo;
   }
 
   pickSite(x, y) {

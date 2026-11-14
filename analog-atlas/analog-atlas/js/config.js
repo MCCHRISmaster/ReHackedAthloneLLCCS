@@ -153,3 +153,82 @@ export const ANALOG_DIMENSIONS = [
   { key: 'subsurface',  label: 'Subsurface' },
   { key: 'habitability', label: 'Habitability' },
 ];
+
+/* ------------------------------------------------------------------------ *
+ *  Point probe: click anywhere on a globe to measure it and score how well
+ *  it matches the OTHER two bodies (Earth → Moon & Mars, Moon → Earth & Mars,
+ *  Mars → Earth & Moon).
+ *
+ *  Every metric below is a PLACEHOLDER until a real dataset is registered for
+ *  it (see js/analysis.js → registerGrid). While SIMULATE_MISSING_DATA is on,
+ *  unmeasured values come from a deterministic noise model so the UI, scoring
+ *  and best-match search can be exercised; the UI labels them "SIM".
+ * ------------------------------------------------------------------------ */
+export const SIMULATE_MISSING_DATA = true;
+
+/** Operating scales. radiusM = area averaged around the probe point. */
+export const SCALES = {
+  human: { id: 'human', label: 'HUMAN', radiusM: 500, mission: 'crewed EVA',
+    note: 'Astronaut on foot · ~500 m EVA radius' },
+  rover: { id: 'rover', label: 'ROVER', radiusM: 10000, mission: 'rover',
+    note: 'Rover traverse · ~10 km radius' },
+};
+
+/**
+ * Metrics measured at a probe point.
+ *   label / plain  technical name / everyday name (Simple view)
+ *   range   difference at which a metric's match falls to 0 (match = 1 − |Δ| / range,
+ *           the same rule as the team's temperature prototype). Per-scale where it differs.
+ *   weight  importance per scale in the overall score.
+ *   uses    what a good match on this metric lets you test, per scale (used in explanations).
+ *   sources planned dataset per body (shown in the UI until it is wired in).
+ */
+export const METRICS = [
+  { key: 'tempHigh', label: 'Daily high', plain: 'Daytime heat', unit: '°C', digits: 0, range: 40,
+    weight: { human: 1, rover: 1 },
+    uses: { human: 'suit cooling and heat stress on the crew', rover: 'keeping electronics and batteries cool' },
+    sources: { earth: 'NASA POWER TS_MAX', moon: 'LRO Diviner', mars: 'Mars Climate Database' } },
+  { key: 'tempLow', label: 'Daily low', plain: 'Night-time cold', unit: '°C', digits: 0, range: 40,
+    weight: { human: 1, rover: 1 },
+    uses: { human: 'suit heating and cold-soaked equipment', rover: 'surviving the night: heaters, battery drain, frozen joints' },
+    sources: { earth: 'NASA POWER TS_MIN', moon: 'LRO Diviner', mars: 'Mars Climate Database' } },
+  { key: 'slope', label: 'Slope', plain: 'Steepness', unit: '°', digits: 1, range: 10,
+    weight: { human: 1.5, rover: 1.2 },
+    uses: { human: 'walking, climbing and carrying loads on similar grades', rover: 'traction and climbing on similar grades' },
+    sources: { earth: 'SRTM / ASTER GDEM', moon: 'LRO LOLA DEM', mars: 'MGS MOLA / HRSC DEM' } },
+  { key: 'relief', label: 'Local relief', plain: 'Hills & dips', unit: 'm', digits: 0, range: { human: 40, rover: 400 },
+    weight: { human: 0.5, rover: 1.5 },
+    uses: { human: 'line-of-sight radio and navigating between landmarks', rover: 'route planning and driving over comparable terrain' },
+    sources: { earth: 'SRTM / ASTER GDEM', moon: 'LRO LOLA DEM', mars: 'MGS MOLA / HRSC DEM' } },
+  { key: 'rocks', label: 'Rock abundance', plain: 'Rockiness', unit: '%', digits: 0, range: 15,
+    weight: { human: 1.5, rover: 1 },
+    uses: { human: 'footing among boulders and picking rock samples', rover: 'obstacle detection and hazard avoidance' },
+    sources: { earth: 'ASTER surface emissivity', moon: 'LRO Diviner rock abundance', mars: 'THEMIS thermal inertia' } },
+  { key: 'fines', label: 'Fine regolith / dust', plain: 'Dust & loose soil', unit: '%', digits: 0, range: 30,
+    weight: { human: 1.2, rover: 1 },
+    uses: { human: 'dust getting into suits, seals and airlocks', rover: 'wheels sinking or slipping in loose soil' },
+    sources: { earth: 'SoilGrids sand/silt', moon: 'Diviner regolith temp.', mars: 'TES dust cover index' } },
+  { key: 'albedo', label: 'Albedo', plain: 'Brightness', unit: '', digits: 2, range: 0.12,
+    weight: { human: 0.5, rover: 0.5 },
+    uses: { human: 'glare and lighting for the crew', rover: 'cameras and visual navigation under similar lighting' },
+    sources: { earth: 'MODIS MCD43 albedo', moon: 'LRO WAC normal albedo', mars: 'MGS TES albedo' } },
+  { key: 'water', label: 'Water / ice', plain: 'Water / ice', unit: 'wt%', digits: 1, range: 8,
+    weight: { human: 1, rover: 1 },
+    uses: { human: 'finding and sampling ice by hand', rover: 'ice prospecting with drills and instruments' },
+    sources: { earth: 'SMAP soil moisture', moon: 'LRO LEND / LAMP', mars: 'Mars Odyssey GRS / SHARAD' } },
+];
+
+/** Whole-body conditions no site can be scored on: shown side by side with every probe. */
+export const BODY_FACTS = [
+  { key: 'gravity', label: 'Gravity', earth: '1 g', moon: '0.17 g', mars: '0.38 g',
+    why: 'Changes how people walk and lift, and how rovers grip.' },
+  { key: 'air', label: 'Atmosphere', earth: 'Thick, breathable', moon: 'None (vacuum)', mars: 'Thin CO₂ (1% of Earth)',
+    why: 'Decides suit design, how dust moves and how heat escapes.' },
+  { key: 'radiation', label: 'Radiation', earth: 'Low (shielded)', moon: 'High (unshielded)', mars: 'High (thin air, no magnetic field)',
+    why: 'Limits how long crews can stay outside.' },
+  { key: 'day', label: 'Day length', earth: '24 h', moon: '29.5 Earth days', mars: '24.6 h',
+    why: 'Sets power, heating and work schedules.' },
+];
+
+/** Best-match search grid (degrees). Real data grids may be finer. */
+export const MATCH_SEARCH_STEP_DEG = 3;

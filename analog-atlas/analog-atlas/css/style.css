@@ -40,52 +40,58 @@ html, body { margin: 0; height: 100%; overflow: hidden; background: var(--bg); c
 .brand-title { font-weight: 700; font-size: 22px; letter-spacing: 0.18em; }
 .brand-sub { font-family: var(--font-mono); font-size: 10px; color: var(--muted); letter-spacing: 0.12em; }
 
-/* ---------- Planet select carousel ---------- */
+/* ---------- Planet selector (bottom centre) ---------- */
 .planet-select {
-  position: fixed; left: 50%; bottom: 50px; transform: translateX(-50%);
-  width: 400px; height: 176px; pointer-events: none; user-select: none;
+  position: fixed; left: 50%; bottom: 52px; transform: translateX(-50%);
+  display: flex; align-items: center; gap: 14px; user-select: none;
 }
-.ps-stage { position: absolute; left: 0; right: 0; top: 0; height: 130px; }
-/* the ring planets travel on, seen at an angle */
-.ps-orbit {
-  position: absolute; left: 50%; top: 58%; width: 260px; height: 46px; transform: translate(-50%, -50%);
-  border: 1px dashed var(--panel-edge); border-radius: 50%;
+.ps-arrow {
+  width: 34px; height: 42px; cursor: pointer;
+  font-size: 14px; color: var(--text); background: var(--panel); border: 1px solid var(--panel-edge);
+  transition: background .15s, color .15s, border-color .15s;
 }
-/* landing pad under the front planet */
-.ps-pad {
-  position: absolute; left: 50%; top: 92%; width: 120px; height: 16px; transform: translate(-50%, -50%);
-  border-radius: 50%; border: 2px solid var(--accent);
-  background: radial-gradient(ellipse, color-mix(in srgb, var(--accent) 35%, transparent), transparent 70%);
-  box-shadow: 0 0 14px var(--accent-dim); transition: border-color .4s, box-shadow .4s;
+.ps-arrow.prev { clip-path: polygon(10px 0, 100% 0, 100% 100%, 10px 100%, 0 50%); padding-left: 10px; }
+.ps-arrow.next { clip-path: polygon(0 0, calc(100% - 10px) 0, 100% 50%, calc(100% - 10px) 100%, 0 100%); padding-right: 10px; }
+.ps-arrow:hover { background: var(--accent); color: #000; border-color: var(--accent); }
+.ps-arrow:active { transform: scale(0.94); }
+.ps-label { min-width: 150px; text-align: center; display: flex; flex-direction: column; align-items: center; }
+.ps-kicker { font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.16em; color: var(--muted); }
+.ps-name { font-weight: 700; font-size: 22px; letter-spacing: 0.3em; padding-left: 0.3em; color: var(--accent); text-shadow: 0 0 12px var(--accent-dim); transition: color .4s; }
+.ps-pips { display: flex; gap: 6px; margin-top: 3px; }
+.ps-pips i { width: 6px; height: 6px; transform: rotate(45deg); border: 1px solid var(--muted); }
+.ps-pips i.on { background: var(--accent); border-color: var(--accent); }
+
+/* ---------- Space backdrop: other planets behind the globe ---------- */
+.space { position: fixed; inset: 0; overflow: hidden; pointer-events: none; }
+.space-planet { position: absolute; left: 0; top: 0; will-change: transform, width; }
+.space-planet .sphere { position: absolute; inset: 0; transition: box-shadow .3s; }
+.space-planet.hover .sphere { box-shadow: inset -10px -12px 26px rgba(0,0,0,0.75), 0 0 0 2px var(--accent), 0 0 24px var(--accent-dim); }
+.space-name {
+  position: absolute; left: 50%; top: calc(100% + 6px); transform: translateX(-50%);
+  font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.2em; color: var(--muted);
+  white-space: nowrap; opacity: 0.6; transition: opacity .2s, color .2s;
 }
-.ps-planet {
-  position: absolute; left: 50%; top: 50%; width: 104px; height: 104px; padding: 0;
-  border: 0; background: none; border-radius: 50%; cursor: pointer; pointer-events: auto;
-  will-change: transform;
-}
-.ps-planet.front { cursor: default; }
-.ps-planet:focus-visible { outline: 2px solid var(--accent); outline-offset: 6px; }
-.ps-sphere {
-  position: absolute; inset: 0; border-radius: 50%; overflow: hidden; display: block;
+.space-planet.hover .space-name { opacity: 1; color: var(--accent); }
+.space-planet.front .space-name { opacity: 0; }
+
+/* ---------- Planet art (spheres + flat maps), see js/planet-art.js ---------- */
+.sphere {
+  border-radius: 50%; overflow: hidden; display: block;
   background: var(--base, #444);
   box-shadow: inset -10px -12px 26px rgba(0,0,0,0.75), inset 4px 4px 10px rgba(255,255,255,0.12);
-  transition: box-shadow .4s;
 }
-.ps-planet.front .ps-sphere { box-shadow: inset -10px -12px 26px rgba(0,0,0,0.75), 0 0 22px var(--accent-dim); }
-.ps-planet[data-body="earth"].front .ps-sphere { box-shadow: inset -10px -12px 26px rgba(0,0,0,0.7), 0 0 22px rgba(79,195,247,0.55); }
-.ps-planet:not(.front):hover .ps-sphere { box-shadow: inset -10px -12px 26px rgba(0,0,0,0.75), 0 0 0 3px var(--accent); }
-
+.sphere[data-body="earth"] { box-shadow: inset -10px -12px 26px rgba(0,0,0,0.7), 0 0 18px rgba(79,195,247,0.35); }
 /* surface strip holds two copies of the map; sliding it by half loops forever */
-.ps-surface {
+.sphere-surface {
   position: absolute; top: 0; left: 0; height: 100%; width: 400%; display: flex;
-  animation: ps-spin 48s linear infinite;
+  animation: sphere-spin 60s linear infinite;
 }
-.ps-surface img { height: 100%; flex: none; display: block; }
-.ps-surface.failed img { display: none; }
-@keyframes ps-spin { to { transform: translateX(-50%); } }
+.sphere-surface img, .flatmap img { height: 100%; flex: none; display: block; }
+.sphere-surface.failed img, .flatmap.failed img { display: none; }
+@keyframes sphere-spin { to { transform: translateX(-50%); } }
+.sphere-surface.procedural, .sphere-surface.failed { animation: none; width: 100%; }
 /* no imagery (offline Moon/Mars): procedural craters / dark regions */
-.ps-surface.procedural, .ps-surface.failed { animation: none; width: 100%; }
-.ps-planet[data-body="moon"] .ps-surface.procedural, .ps-planet[data-body="moon"] .ps-surface.failed {
+.sphere[data-body="moon"] .sphere-surface.procedural, .sphere[data-body="moon"] .sphere-surface.failed {
   background:
     radial-gradient(circle at 30% 35%, rgba(40,40,44,0.55) 0 14%, transparent 15%),
     radial-gradient(circle at 55% 55%, rgba(40,40,44,0.45) 0 10%, transparent 11%),
@@ -93,7 +99,7 @@ html, body { margin: 0; height: 100%; overflow: hidden; background: var(--bg); c
     radial-gradient(circle at 40% 72%, rgba(255,255,255,0.15) 0 4%, transparent 5%),
     #9a9c9e;
 }
-.ps-planet[data-body="mars"] .ps-surface.procedural, .ps-planet[data-body="mars"] .ps-surface.failed {
+.sphere[data-body="mars"] .sphere-surface.procedural, .sphere[data-body="mars"] .sphere-surface.failed {
   background:
     radial-gradient(ellipse 40% 14% at 50% 6%, rgba(255,240,230,0.7), transparent 100%),
     radial-gradient(ellipse 30% 10% at 45% 48%, rgba(60,20,10,0.55), transparent 100%),
@@ -101,27 +107,128 @@ html, body { margin: 0; height: 100%; overflow: hidden; background: var(--bg); c
     #b5532e;
 }
 /* terminator shading + highlight on top of the map */
-.ps-shade {
+.sphere-shade {
   position: absolute; inset: 0; border-radius: 50%; display: block; pointer-events: none;
   background:
     radial-gradient(circle at 34% 30%, rgba(255,255,255,0.22), transparent 38%),
     radial-gradient(circle at 38% 36%, transparent 42%, rgba(0,0,0,0.55) 68%, rgba(0,0,0,0.9) 100%);
 }
-
-.ps-arrow {
-  position: absolute; top: 44px; width: 34px; height: 42px; pointer-events: auto; cursor: pointer;
-  font-size: 14px; color: var(--text); background: var(--panel); border: 1px solid var(--panel-edge);
-  transition: background .15s, color .15s, border-color .15s;
+.flatmap { position: absolute; inset: 0; display: flex; background: var(--base, #333); }
+.flatmap.procedural, .flatmap.failed {
+  background:
+    repeating-linear-gradient(to right, rgba(255,255,255,0.07) 0 1px, transparent 1px 8.333%),
+    repeating-linear-gradient(to bottom, rgba(255,255,255,0.07) 0 1px, transparent 1px 16.666%),
+    var(--base, #333);
 }
-.ps-arrow.prev { left: 0; clip-path: polygon(10px 0, 100% 0, 100% 100%, 10px 100%, 0 50%); padding-left: 10px; }
-.ps-arrow.next { right: 0; clip-path: polygon(0 0, calc(100% - 10px) 0, 100% 50%, calc(100% - 10px) 100%, 0 100%); padding-right: 10px; }
-.ps-arrow:hover { background: var(--accent); color: #000; border-color: var(--accent); }
-.ps-arrow:active { transform: scale(0.94); }
+@media (prefers-reduced-motion: reduce) { .sphere-surface { animation: none; } }
 
-.ps-label { position: absolute; left: 0; right: 0; bottom: 0; text-align: center; display: flex; flex-direction: column; }
-.ps-kicker { font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.16em; color: var(--muted); }
-.ps-name { font-weight: 700; font-size: 22px; letter-spacing: 0.3em; padding-left: 0.3em; color: var(--accent); text-shadow: 0 0 12px var(--accent-dim); transition: color .4s; }
-@media (prefers-reduced-motion: reduce) { .ps-surface { animation: none; } }
+/* ---------- Mini map ---------- */
+.minimap-panel { flex: 0 0 auto; }
+.mm-map { position: relative; aspect-ratio: 2 / 1; overflow: hidden; background: #000; }
+.mm-main { margin: 8px 10px 6px; cursor: crosshair; border: 1px solid var(--panel-edge); }
+.mm-view {
+  position: absolute; transform: translate(-50%, -50%); border: 1.5px solid var(--accent);
+  box-shadow: 0 0 0 999px rgba(0,0,0,0.28); pointer-events: none; min-width: 6px; min-height: 6px;
+}
+.mm-sites i { position: absolute; width: 5px; height: 5px; transform: translate(-50%, -50%) rotate(45deg); box-shadow: 0 0 0 1px #000; }
+.mm-pin { position: absolute; transform: translate(-50%, -50%); pointer-events: none; }
+.mm-pin.probe { width: 13px; height: 13px; border: 2px solid var(--accent); border-radius: 50%; box-shadow: 0 0 6px var(--accent), 0 0 0 1px #000; }
+.mm-pin.probe::before, .mm-pin.probe::after { content: ""; position: absolute; background: var(--accent); }
+.mm-pin.probe::before { left: 50%; top: -6px; bottom: -6px; width: 1.5px; transform: translateX(-50%); }
+.mm-pin.probe::after { top: 50%; left: -6px; right: -6px; height: 1.5px; transform: translateY(-50%); }
+.mm-pin.match { width: 10px; height: 10px; background: #4fc3f7; transform: translate(-50%, -50%) rotate(45deg); box-shadow: 0 0 0 1.5px #000, 0 0 8px #4fc3f7; animation: pulse 1.6s infinite; }
+.mm-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; padding: 0 10px 6px; }
+.mm-small { padding: 0; border: 1px solid rgba(255,255,255,0.1); background: none; color: var(--text); cursor: pointer; text-align: left; font-family: var(--font-ui); }
+.mm-small:hover:not(.empty) { border-color: var(--accent); }
+.mm-small.empty { cursor: default; opacity: 0.6; }
+.mm-cap { display: flex; justify-content: space-between; padding: 2px 5px; font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.12em; }
+.mm-score { color: var(--accent); font-weight: 600; }
+.mm-foot { padding: 0 10px 8px; font-size: 10px; color: var(--muted); font-family: var(--font-mono); }
+
+/* ---------- Probe panel ---------- */
+.sim { font-family: var(--font-mono); font-size: 8px; letter-spacing: 0.08em; color: #ff9f0a; border: 1px solid #ff9f0a; padding: 0 3px; margin-left: 6px; vertical-align: middle; }
+.sim.big { font-size: 9px; margin-left: 8px; }
+.seg { display: grid; grid-template-columns: 1fr 1fr; border: 1px solid var(--panel-edge); margin-bottom: 12px; }
+.seg button {
+  font-family: var(--font-ui); font-weight: 700; letter-spacing: 0.2em; font-size: 13px;
+  padding: 7px; background: none; border: 0; color: var(--muted); cursor: pointer;
+}
+.seg button[aria-checked="true"] { background: var(--accent); color: #000; }
+.seg button:hover:not([aria-checked="true"]) { color: var(--text); background: rgba(255,255,255,0.05); }
+.score-cards { display: flex; flex-direction: column; gap: 8px; }
+.score-card { padding: 8px 10px; background: rgba(255,255,255,0.03); border-left: 2px solid var(--tc); }
+.score-top { display: grid; grid-template-columns: 64px 1fr; gap: 12px; align-items: center; }
+.score-card[data-target="earth"] { --tc: var(--earth); }
+.score-card[data-target="moon"] { --tc: var(--moon); }
+.score-card[data-target="mars"] { --tc: var(--mars); }
+.tier { display: inline-block; font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.1em; padding: 1px 6px; margin: 2px 0 4px; text-transform: uppercase; }
+.tier.strong { background: #4cd964; color: #000; }
+.tier.partial { background: #ffcc00; color: #000; }
+.tier.weak { border: 1px solid #ff8a80; color: #ff8a80; }
+.score-summary { font-size: 12px; line-height: 1.35; color: var(--text); }
+.score-card .sec { margin-top: 6px; }
+.why-head { margin: 0 0 6px; font-size: 13px; }
+.why { margin: 0 0 6px; padding-left: 0; list-style: none; font-size: 12px; line-height: 1.35; }
+.why li { position: relative; padding-left: 16px; margin-bottom: 4px; }
+.why.good li::before { content: "✓"; position: absolute; left: 0; color: #4cd964; }
+.why.gap li::before { content: "✕"; position: absolute; left: 0; color: #ff8a80; }
+.scale-note { margin: -6px 0 10px; font-size: 12px; color: var(--muted); }
+.key { font-family: var(--font-mono); font-size: 10px; border: 1px solid var(--muted); padding: 0 4px; margin-left: 4px; }
+.hint-line { font-size: 11px; color: var(--muted); margin: 6px 0 0; }
+.metric-table.facts td { white-space: normal; font-size: 11px; }
+.metric-table.facts td:first-child { color: var(--muted); }
+
+/* collapsible sections inside panels */
+details.sec { border-top: 1px solid rgba(255,255,255,0.08); margin-top: 12px; }
+details.sec > summary {
+  cursor: pointer; list-style: none; padding: 8px 0 4px; font-size: 12px; letter-spacing: 0.2em; font-weight: 700; color: var(--accent);
+  display: flex; justify-content: space-between; align-items: center;
+}
+details.sec > summary::-webkit-details-marker { display: none; }
+details.sec > summary::after { content: "SHOW ▸"; font-family: var(--font-mono); font-size: 9px; letter-spacing: 0.1em; color: var(--muted); font-weight: 400; }
+details.sec[open] > summary::after { content: "HIDE ▾"; }
+details.sec > summary:hover::after { color: var(--accent); }
+.score-card details.sec { border-top-color: rgba(255,255,255,0.05); }
+.score-card details.sec > summary { font-size: 11px; color: var(--text); letter-spacing: 0.14em; }
+
+/* collapsible HUD panels */
+.collapse-btn { margin-left: 8px; background: none; border: 0; color: var(--muted); cursor: pointer; font-size: 12px; padding: 0 2px; }
+.collapse-btn:hover { color: var(--accent); }
+.left-col .panel-head { cursor: pointer; }
+.panel-head > span:first-child { margin-right: auto; }
+.panel.collapsed > :not(.panel-head) { display: none !important; }
+.panel.collapsed > .panel-head { border-bottom: 0; }
+.panel.collapsed { flex: 0 0 auto !important; min-height: 0 !important; overflow: hidden !important; }
+body.simple .detail-only { display: none; }
+.dial {
+  width: 64px; height: 64px; border-radius: 50%; display: grid; place-items: center;
+  background: radial-gradient(closest-side, #0b0f14 78%, transparent 80% 100%), conic-gradient(var(--tc) calc(var(--p) * 1%), rgba(255,255,255,0.1) 0);
+}
+.dial span { font-family: var(--font-mono); font-weight: 600; font-size: 18px; }
+.dial small { font-size: 10px; color: var(--muted); }
+.score-target { font-weight: 700; letter-spacing: 0.18em; font-size: 14px; color: var(--tc); }
+.score-info .coords { font-size: 11px; margin: 2px 0 6px; }
+.mini-btn {
+  font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.12em; padding: 4px 8px; cursor: pointer;
+  background: none; color: var(--text); border: 1px solid var(--panel-edge);
+}
+.mini-btn:hover { background: var(--accent); color: #000; border-color: var(--accent); }
+.mini-btn.wide { width: 100%; margin-top: 10px; padding: 7px; }
+.metric-table { width: 100%; border-collapse: collapse; font-size: 12px; table-layout: fixed; }
+.metric-table td { overflow: hidden; text-overflow: ellipsis; }
+.metric-table:not(.small) th:first-child { width: 40%; }
+.metric-table:not(.small) th:nth-child(2) { width: 24%; }
+.metric-table th { text-align: left; font-family: var(--font-mono); font-size: 9px; letter-spacing: 0.12em; color: var(--muted); font-weight: 400; padding: 2px 4px; }
+.metric-table td { padding: 4px; border-top: 1px solid rgba(255,255,255,0.05); white-space: nowrap; }
+.metric-table .num { text-align: right; font-family: var(--font-mono); }
+.metric-table.small td { white-space: normal; font-size: 10px; color: var(--muted); }
+.metric-table.small td:first-child { color: var(--text); }
+.mbar { height: 6px; background: rgba(255,255,255,0.08); position: relative; }
+.mbar > span { position: absolute; inset: 0 auto 0 0; }
+.mbar > span { background: var(--tc, var(--accent)); }
+.sources { margin-top: 12px; }
+.sources summary { cursor: pointer; font-size: 12px; letter-spacing: 0.2em; color: var(--accent); font-weight: 700; margin-bottom: 6px; }
+.placeholder-note code { font-family: var(--font-mono); color: var(--accent-dim); }
 
 .status { font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.1em; color: var(--muted); display: flex; align-items: center; gap: 8px; }
 .status-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 8px var(--accent); animation: pulse 1.6s infinite; }
@@ -156,7 +263,9 @@ html, body { margin: 0; height: 100%; overflow: hidden; background: var(--bg); c
 .left-col { position: fixed; top: 80px; left: 20px; bottom: 60px; width: 290px; display: flex; flex-direction: column; gap: 12px; pointer-events: none; }
 .left-col .panel { position: relative; pointer-events: auto; }
 .site-panel { display: flex; flex-direction: column; min-height: 0; flex: 0 1 auto; }
-.imagery-panel { flex: 0 0 auto; }
+.site-panel { min-height: 150px; }
+.imagery-panel { flex: 0 1 auto; min-height: 90px; overflow: hidden auto; }
+.hud-right { overflow-x: hidden; }
 .filter-row { display: flex; gap: 6px; padding: 10px 14px 4px; flex-wrap: wrap; }
 .chip {
   font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase;
@@ -229,7 +338,8 @@ html, body { margin: 0; height: 100%; overflow: hidden; background: var(--bg); c
   .hud-right { width: calc(100vw - 40px); top: 72px; max-height: 45vh; }
   .hud-controls { bottom: calc(30vh + 72px); }
   .brand-sub, .hint, .credit, .status { display: none; }
-  .planet-select { bottom: auto; top: 54px; transform: translateX(-50%) scale(0.72); transform-origin: top center; }
+  .planet-select { bottom: auto; top: 54px; transform: translateX(-50%) scale(0.8); transform-origin: top center; }
+  .minimap-panel { display: none; }
 }
 
 /* Keep zoom controls clear of the briefing panel when it is open */
@@ -313,6 +423,8 @@ body.tactical .vignette { background: radial-gradient(ellipse at center, transpa
 .temp-hint.err { color: #ff8a80; }
 .temp-ref { position: relative; padding-right: 28px; }
 .temp-ref-name { font-weight: 700; font-size: 16px; letter-spacing: 0.05em; }
+.temp-ref-body { font-family: var(--font-mono); font-size: 9px; letter-spacing: 0.15em; color: var(--accent); }
+.temp-note b { color: inherit; }
 .temp-clear { position: absolute; top: 0; right: 0; width: 22px; height: 22px; background: none; border: 1px solid var(--panel-edge); color: var(--text); cursor: pointer; font-size: 11px; }
 .temp-clear:hover { border-color: var(--accent); color: var(--accent); }
 .temp-vals { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; }

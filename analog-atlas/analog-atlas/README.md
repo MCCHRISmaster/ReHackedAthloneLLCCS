@@ -13,9 +13,34 @@ WorldWind needs a web server (browsers block WebGL textures from `file://`):
 
 ## Controls
 Drag = spin · scroll/pinch = zoom · right-drag = tilt · click marker = briefing
-Planet select is a carousel at the bottom centre: ◀ / ▶, click a side planet, or `Q` / `E` to rotate it.
-Keys: `Q`/`E` previous/next planet, `1` Earth, `2` Moon, `3` Mars, `T` Tactical view, `+`/`-` zoom, `R` auto-rotate, `H` home, `Esc` close briefing.
+Click bare ground = point probe (scores vs the other two bodies) · `V` toggles Human / Rover scale.
+All three planets sit on one wheel: the current one is the globe, the others hang behind it. Click one
+(or ◀ / ▶ at the bottom, `Q` / `E`, `1`–`3`) and the whole wheel turns to bring it to the front.
+`D` (or the SIMPLE / DETAILED VIEW button) switches between a plain-language overview and full technical detail.
+Every left-hand panel collapses from its header; sections in the right-hand panel open and close individually.
+Keys: `Q`/`E` previous/next planet, `1` Earth, `2` Moon, `3` Mars, `V` probe scale, `D` detail level, `T` Tactical view, `+`/`-` zoom, `R` auto-rotate, `H` home, `Esc` close panel.
 Briefings link Moon/Mars targets to their Earth analogs (and back) — click one to jump planets.
+
+## Point probe & scoring (placeholder data)
+Clicking any point on any globe measures it (`js/analysis.js`) and finds the best-matching spot on each of the
+**other two bodies**: Earth → Moon & Mars, Moon → Earth & Mars, Mars → Earth & Moon. Earth matches are kept on land
+(a mask built from the bundled Blue Marble). For each body the panel shows a match %, a rating (strong / partial /
+weak analog) and a plain-language explanation from `js/explain.js`: which conditions line up and what that lets a
+crewed EVA or rover team test there, and which don't. Measurements, the whole-body differences (gravity, air,
+radiation, day length) and data notes are in collapsible sections. The minimap pins the probed point and both best
+matches; click a small map to go there.
+
+Simple view (the default for new visitors) uses everyday names ("Steepness" rather than "Slope") and keeps
+tables closed; Detailed view opens them. Open/closed choices are remembered in the browser.
+
+- **Metrics, weights, scales and planned NASA sources** are in `js/config.js` (`METRICS`, `SCALES`).
+  Human scale averages over ~500 m, Rover over ~10 km, and the two weight metrics differently.
+- **Score rule:** per metric `max(0, 1 − |Δ| / range)` (same rule as the team's temperature prototype), then a weighted mean.
+- **No real data is wired in yet.** With `SIMULATE_MISSING_DATA = true`, values come from a deterministic noise
+  model and are labelled SIM / SIMULATED DATA. They are not results.
+- **To plug in a dataset:** `registerGrid(body, metricKey, { values })` with an equirectangular grid
+  (row 0 = north, col 0 = 180°W, any resolution). The team prototype's `grids/moon.json` / `mars.json`
+  `high` / `low` arrays fit directly as `tempHigh` / `tempLow`.
 
 ## Layout
     index.html          page shell + HUD markup
@@ -25,7 +50,12 @@ Briefings link Moon/Mars targets to their Earth analogs (and back) — click one
     js/tactical-fx.js   Tactical-view canvas effects (stylise, contours, hatch, ring)
     js/data/sites.js    Earth analogs + Moon/Mars targets, with cross-links
     js/globe.js         GlobeView: all WorldWind code (per-body globe, layers, markers, picking, camera)
-    js/ui.js            HUD rendering (tabs, lists, imagery selector, briefing)
+    js/ui.js            HUD rendering (planet selector, lists, imagery selector, briefing, probe panel)
+    js/analysis.js      point measurement, match scoring vs the other bodies, best-match search, Earth land mask, real-data hook
+    js/explain.js       plain-language "why test here" explanations built from a probe result
+    js/minimap.js       minimap panel (camera view box, sites, probe + best-match pins)
+    js/space.js         planet wheel behind the globe + wheel-spin switch animation
+    js/planet-art.js    CSS planet spheres and flat maps used by the backdrop and minimap
     js/main.js          app state + wiring
     lib/worldwind.min.js  WebWorldWind bundled from source (commit 5ffe2df, v0.11.0)
     lib/images/         Blue Marble, night lights, star field (from the WorldWind repo)
