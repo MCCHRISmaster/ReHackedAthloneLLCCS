@@ -38,3 +38,99 @@ Run Python as `terrain_data/.venv/Scripts/python.exe`. Model was switched to Son
 - NOT FOUND (shortcuts): LROC PSR shapefiles (archive is a JS page, no listing), LOLA polar illumination (folder 404), LP hydrogen (skipped, cut-list item). Artemis III region centres: USGS ScienceBase gave 403, so centres are approximate (coord_status=approximate).
 - curated/targets_moon.csv: 34 Moon targets (Artemis III regions as group "artemis-iii", Apollo, Luna, Chang'e, pits, science regions). 41_verify_coords.py checks them against Wikipedia (work/coord_check.csv): 11 ok, 8 within ~1 deg, 16 have no Wikipedia point.
 - Host status at 16:10: answering now = pds-geosciences, ngdc.noaa.gov, doi.pangaea.de, naciscdn.org, neo.gsfc.nasa.gov, wikipedia, volcano.si.edu. Still resetting = astropedia.astrogeology.usgs.gov, geodata.ucdavis.edu. zenodo 403 to bare UA.
+- 2026-11-14 16:04 downloaded ne_50m_land.zip (0.5 MB) from https://naciscdn.org/naturalearth/50m/physical/ne_50m_land.zip
+- 2026-11-14 16:04 downloaded ne_50m_admin_0_countries.zip (0.8 MB) from https://naciscdn.org/naturalearth/50m/cultural/ne_50m_admin_0_countries.zip
+- 2026-11-14 16:04 downloaded ne_10m_admin_1_states_provinces.zip (14.9 MB) from https://naciscdn.org/naturalearth/10m/cultural/ne_10m_admin_1_states_provinces.zip
+- 2026-11-14 16:04 downloaded gvp_holocene_volcanoes.json (2.4 MB) from https://webservices.volcano.si.edu/geoserver/GVP-VOTW/ows?service=WFS&version=2.0.0&request=GetFeature&typeName=GVP-VOTW:Smithsonian_VOTW_Holocene_Volcanoes&outputFormat=json
+- 2026-11-14 16:05 FAILED to download glim_05deg.tab after 1 rounds over 1 mirror(s): https://doi.pangaea.de/10.1594/PANGAEA.788537?format=textfile
+- 2026-11-14 16:08 coordinate check against Wikipedia: {'no_wikipedia_coords': 32, 'CHECK': 17, 'ok': 150}
+- 2026-11-14 16:10 downloaded etopo2022_60s_surface.nc (478.3 MB) from https://www.ngdc.noaa.gov/thredds/fileServer/global/ETOPO2022/60s/60s_surface_elev_netcdf/ETOPO_2022_v1_60s_N90W180_surface.nc
+- 2026-11-14 16:10 downloaded wc2.1_10m_prec.zip (7.3 MB) from https://geodata.ucdavis.edu/climate/worldclim/2_1/base/wc2.1_10m_prec.zip
+- 2026-11-14 16:10 downloaded wc2.1_10m_tavg.zip (37.4 MB) from https://geodata.ucdavis.edu/climate/worldclim/2_1/base/wc2.1_10m_tavg.zip
+- 2026-11-14 16:10 downloaded wc2.1_10m_tmin.zip (37.6 MB) from https://geodata.ucdavis.edu/climate/worldclim/2_1/base/wc2.1_10m_tmin.zip
+- 2026-11-14 16:10 downloaded wc2.1_10m_tmax.zip (37.4 MB) from https://geodata.ucdavis.edu/climate/worldclim/2_1/base/wc2.1_10m_tmax.zip
+- 2026-11-14 16:10 downloaded wc2.1_10m_wind.zip (27.9 MB) from https://geodata.ucdavis.edu/climate/worldclim/2_1/base/wc2.1_10m_wind.zip
+- 2026-11-14 16:10 downloaded wc2.1_10m_srad.zip (16.2 MB) from https://geodata.ucdavis.edu/climate/worldclim/2_1/base/wc2.1_10m_srad.zip
+- 2026-11-14 16:11 downloaded wc2.1_10m_vapr.zip (27.2 MB) from https://geodata.ucdavis.edu/climate/worldclim/2_1/base/wc2.1_10m_vapr.zip
+- 2026-11-14 16:12 downloaded glim_05deg.tab (0.0 MB) from https://doi.pangaea.de/10.1594/PANGAEA.788537?format=textfile
+- 2026-11-14 16:12 earth downloader finished; all files present
+- 2026-11-14 16:14 earth terrain: ETOPO 2022 60s processed; land share 33.1%
+- 2026-11-14 16:14 earth volcanoes: 1214 Holocene volcanoes from GVP
+- 2026-11-14 16:14 earth GLiM: 0.5 deg grid, 16 classes, 23369 1-degree cells covered
+- 2026-11-14 16:14 earth volcanoes: 1214 Holocene volcanoes from GVP
+- 2026-11-14 16:14 earth features built; sources ['etopo2022', 'glim_v1', 'gvp_votw', 'curated_caves;curated_impacts', 'worldclim_2_1', 'natural_earth', 'earth_climate_proxy']; missing ['temperature (run 21_earth_temperature.py)']
+- 2026-11-14 16:18 downloaded img_kilbourne-hole.jpg (0.2 MB) from https://thumb.wikimedia.org/wikipedia/commons/thumb/0/00/Kilbourne_and_Hunts_Holes_and_White_Sands.jpg/960px-Kilbourne_and_Hunts_Holes_and_White_Sands.jpg?utm_source=en.wikipedia.org&utm_campaign=api&utm_content=thumbnail
+- 2026-11-14 16:18 downloaded img_craters-of-the-moon.jpg (0.2 MB) from https://thumb.wikimedia.org/wikipedia/commons/thumb/a/a3/CratersDrone1.jpg/960px-CratersDrone1.jpg?utm_source=en.wikipedia.org&utm_campaign=api&utm_content=thumbnail
+- 2026-11-14 16:18 downloaded img_lava-beds.jpg (0.3 MB) from https://thumb.wikimedia.org/wikipedia/commons/thumb/6/6f/Lava_Beds_Cave_collapse_trench.jpg/960px-Lava_Beds_Cave_collapse_trench.jpg?utm_source=en.wikipedia.org&utm_campaign=api&utm_content=thumbnail
+- 2026-11-14 16:18 downloaded img_mauna-kea.jpg (0.1 MB) from https://thumb.wikimedia.org/wikipedia/commons/thumb/8/8d/Mauna_Kea_from_the_ocean.jpg/960px-Mauna_Kea_from_the_ocean.jpg?utm_source=en.wikipedia.org&utm_campaign=api&utm_content=thumbnail
+- 2026-11-14 16:18 downloaded img_mdrs-hanksville.jpg (0.2 MB) from https://thumb.wikimedia.org/wikipedia/commons/thumb/4/49/Mars_Desert_Research_Station_2020.jpg/960px-Mars_Desert_Research_Station_2020.jpg?utm_source=en.wikipedia.org&utm_campaign=api&utm_content=thumbnail
+- 2026-11-14 16:18 downloaded img_askja.jpg (0.1 MB) from https://upload.wikimedia.org/wikipedia/commons/e/e6/Askja.jpg?utm_source=en.wikipedia.org&utm_campaign=api&utm_content=thumbnail_unscaled
+- 2026-11-14 16:18 downloaded img_cueva-de-los-verdes.jpg (0.2 MB) from https://thumb.wikimedia.org/wikipedia/commons/thumb/0/08/Har%C3%ADa_-_MNLC_-_LZ-1_-_Jameos_del_Agua_12_ies.jpg/960px-Har%C3%ADa_-_MNLC_-_LZ-1_-_Jameos_del_Agua_12_ies.jpg?utm_source=en.wikipedia.org&utm_campaign=api&utm_content=thumbnail
+- 2026-11-14 16:18 downloaded img_atacama-yungay.jpg (0.5 MB) from https://upload.wikimedia.org/wikipedia/commons/7/7f/Atacama.png?utm_source=en.wikipedia.org&utm_campaign=api&utm_content=thumbnail_unscaled
+- 2026-11-14 16:18 downloaded img_lonar-crater.jpg (0.1 MB) from https://thumb.wikimedia.org/wikipedia/commons/thumb/8/82/Lonar_Crater%2C_Panorama.jpg/960px-Lonar_Crater%2C_Panorama.jpg?utm_source=en.wikipedia.org&utm_campaign=api&utm_content=thumbnail
+- 2026-11-14 16:19 downloaded img_athlone.jpg (0.2 MB) from https://thumb.wikimedia.org/wikipedia/commons/thumb/8/87/Athlone_-_SS_Peter_and_Paul%27s_Church_-_20210809155932.jpg/960px-Athlone_-_SS_Peter_and_Paul%27s_Church_-_20210809155932.jpg?utm_source=en.wikipedia.org&utm_campaign=api&utm_content=thumbnail
+- 2026-11-14 16:19 downloaded img_clonmacnoise-esker-riada.jpg (0.2 MB) from https://thumb.wikimedia.org/wikipedia/commons/thumb/d/d1/Clonmacnoise_6.jpg/960px-Clonmacnoise_6.jpg?utm_source=en.wikipedia.org&utm_campaign=api&utm_content=thumbnail
+- 2026-11-14 16:19 downloaded img_apollo-16.jpg (0.3 MB) from https://thumb.wikimedia.org/wikipedia/commons/thumb/b/b3/John_W._Young_on_the_Moon.jpg/960px-John_W._Young_on_the_Moon.jpg?utm_source=en.wikipedia.org&utm_campaign=api&utm_content=thumbnail
+- 2026-11-14 16:19 downloaded img_apollo-17.jpg (0.3 MB) from https://thumb.wikimedia.org/wikipedia/commons/thumb/a/ac/Eugene_Cernan_at_the_LM%2C_Apollo_17%2C_AS17-134-20378.jpg/960px-Eugene_Cernan_at_the_LM%2C_Apollo_17%2C_AS17-134-20378.jpg?utm_source=en.wikipedia.org&utm_campaign=api&utm_content=thumbnail
+- 2026-11-14 16:19 downloaded img_marius-hills-pit.jpg (0.6 MB) from https://thumb.wikimedia.org/wikipedia/commons/thumb/6/6c/Marius_Hills_%28LROC-WAC_Nearside_mosaic%29.png/960px-Marius_Hills_%28LROC-WAC_Nearside_mosaic%29.png?utm_source=en.wikipedia.org&utm_campaign=api&utm_content=thumbnail
+- 2026-11-14 16:19 downloaded img_mare-tranquillitatis-pit.jpg (0.0 MB) from https://upload.wikimedia.org/wikipedia/commons/f/fa/Mare_Tranquillitatis.jpg?utm_source=en.wikipedia.org&utm_campaign=api&utm_content=thumbnail_unscaled
+- 2026-11-14 16:19 curated tables enriched; 15 demo images saved locally
+- 2026-11-14 16:23 downloaded moon_robbins_2018.dat (96.2 MB) from https://astrogeology.usgs.gov/ckan/dataset/f89f5478-b69a-486c-b9b5-30d7b0c5ad2b/resource/c4f25cc2-4f8a-4207-a845-5e176da3ac5a/download/lunar_crater_database_robbins_2018
+- 2026-11-14 16:24 moon DEM: elevation -7617..8305 m, slope mean 4.9 deg
+- 2026-11-14 16:24 moon craters: 1296796 rows from Robbins; 6973 with D>=20 km
+- 2026-11-14 16:24 moon LP GRS: 11306 pixels painted onto 2-deg cells; 0 cells uncovered; FeO 0.0..30.7 wt%
+- 2026-11-14 16:24 moon pits: 278 entries, 21 mare/highland collapse pits kept (16 mare); impact-melt pits dropped
+- 2026-11-14 16:25 downloaded mars_megt16.img (33.2 MB) from https://pds-geosciences.wustl.edu/mgs/mgs-m-mola-5-megdr-l3-v1/mgsl_300x/meg016/megt90n000eb.img
+- 2026-11-14 16:25 downloaded mars_megt16.lbl (0.0 MB) from https://pds-geosciences.wustl.edu/mgs/mgs-m-mola-5-megdr-l3-v1/mgsl_300x/meg016/megt90n000eb.lbl
+- 2026-11-14 16:25 downloaded mars_ti_night.img (25.9 MB) from https://pds-geosciences.wustl.edu/mgs/mgs-m-tes-5-timap-v1/mgst_9001/data/global_ti_msk_night_2007.img
+- 2026-11-14 16:25 downloaded mars_ti_night.lbl (0.0 MB) from https://pds-geosciences.wustl.edu/mgs/mgs-m-tes-5-timap-v1/mgst_9001/data/global_ti_msk_night_2007.lbl
+- 2026-11-14 16:25 downloaded mars_h2o_5x5.tab (0.2 MB) from https://pds-geosciences.wustl.edu/ody/ody-m-grs-5-elements-v1/odgm_xxxx/data/smoothed/h2o_sr_5x5.tab
+- 2026-11-14 16:25 downloaded mars_h2o_5x5.lbl (0.0 MB) from https://pds-geosciences.wustl.edu/ody/ody-m-grs-5-elements-v1/odgm_xxxx/data/smoothed/h2o_sr_5x5.lbl
+- 2026-11-14 16:26 downloaded mars_ti_night_real.img (51.8 MB) from https://pds-geosciences.wustl.edu/mgs/mgs-m-tes-5-timap-v1/mgst_9001/data/global_ti_night_2007.img
+- 2026-11-14 16:26 downloaded mars_ti_night_real.lbl (0.0 MB) from https://pds-geosciences.wustl.edu/mgs/mgs-m-tes-5-timap-v1/mgst_9001/data/global_ti_night_2007.lbl
+- 2026-11-14 16:27 mars DEM: elevation -7390..18822 m, slope mean 1.0 deg
+- 2026-11-14 16:27 downloaded mars_robbins_p0.json (9.2 MB) from https://astrogeology.usgs.gov/pygeoapi/collections/mars/robbinsv1/items?f=json&limit=20000&offset=0&sortby=-diamkm
+- 2026-11-14 16:29 FAILED to download mars_robbins_p1.json after 3 rounds over 1 mirror(s): https://astrogeology.usgs.gov/pygeoapi/collections/mars/robbinsv1/items?f=json&limit=20000&offset=20000&sortby=-diamkm
+- 2026-11-14 16:29 mars craters: 20000 craters >= 12.1 km fetched from the USGS API
+- 2026-11-14 16:29 mars TES TI: 22..4433, 360 cells blank
+- 2026-11-14 16:29 mars GRS WEH: 1.7..7.4 wt%, polar rows filled from nearest valid row
+- 2026-11-14 16:30 mars DEM: elevation -7390..18822 m, slope mean 1.0 deg
+- 2026-11-14 16:31 downloaded mars_robbins_p1.json (9.2 MB) from https://astrogeology.usgs.gov/pygeoapi/collections/mars/robbinsv1/items?f=json&limit=20000&offset=20000&sortby=-diamkm
+- 2026-11-14 16:31 downloaded mars_robbins_p2.json (9.2 MB) from https://astrogeology.usgs.gov/pygeoapi/collections/mars/robbinsv1/items?f=json&limit=20000&offset=40000&sortby=-diamkm
+- 2026-11-14 16:31 mars craters: 60000 craters >= 3.9 km fetched from the USGS API
+- 2026-11-14 16:31 mars TES TI: 22..4433, 360 cells blank
+- 2026-11-14 16:31 mars GRS WEH: 1.7..7.4 wt% where valid, 7326 cells blank (polar), water_idx uses the latitude proxy there
+- 2026-11-14 16:33 downloaded mars_sim3292_database.zip (808.9 MB) from https://pubs.usgs.gov/sim/3292/downloads/sim3292_database.zip
+- 2026-11-14 16:35 mars DEM: elevation -7390..18822 m, slope mean 1.0 deg
+- 2026-11-14 16:35 mars craters: 60000 craters >= 3.9 km fetched from the USGS API
+- 2026-11-14 16:35 mars TES TI: 22..4433, 360 cells blank
+- 2026-11-14 16:35 mars GRS WEH: 1.7..7.4 wt% where valid, 7326 cells blank (polar), water_idx uses the latitude proxy there
+- 2026-11-14 16:36 mars geology: 1311 polygons, 8 groups; mean coverage 100% of cells
+- 2026-11-14 16:36 coordinate check against Wikipedia: {'ok': 6, 'CHECK': 17, 'no_wikipedia_coords': 2}
+- 2026-11-14 16:36 downloaded img_jezero.jpg (1.0 MB) from https://thumb.wikimedia.org/wikipedia/commons/thumb/d/d6/Perseverance%27s_First_Full-Color_Look_at_Mars.png/960px-Perseverance%27s_First_Full-Color_Look_at_Mars.png?utm_source=en.wikipedia.org&utm_campaign=api&utm_content=thumbnail
+- 2026-11-14 16:36 downloaded img_gale.jpg (0.1 MB) from https://thumb.wikimedia.org/wikipedia/commons/thumb/5/5b/Curiosity_Cradled_by_Gale_Crater.jpg/960px-Curiosity_Cradled_by_Gale_Crater.jpg?utm_source=en.wikipedia.org&utm_campaign=api&utm_content=thumbnail
+- 2026-11-14 16:36 downloaded img_meridiani-planum.jpg (0.1 MB) from https://thumb.wikimedia.org/wikipedia/commons/thumb/6/6b/Sol322B.Smooth.Sheet.bedforms.close.to.heat.shield.crp.jpg/960px-Sol322B.Smooth.Sheet.bedforms.close.to.heat.shield.crp.jpg?utm_source=en.wikipedia.org&utm_campaign=api&utm_content=thumbnail
+- 2026-11-14 16:37 downloaded img_oxia-planum.jpg (0.2 MB) from https://thumb.wikimedia.org/wikipedia/commons/thumb/8/8f/Oxia_Planum_near_Coogoon_Vallis_by_HiRise.jpg/960px-Oxia_Planum_near_Coogoon_Vallis_by_HiRise.jpg?utm_source=en.wikipedia.org&utm_campaign=api&utm_content=thumbnail
+- 2026-11-14 16:37 downloaded img_phoenix-green-valley.jpg (0.2 MB) from https://thumb.wikimedia.org/wikipedia/commons/thumb/6/6a/Phoenix_landing.jpg/960px-Phoenix_landing.jpg?utm_source=en.wikipedia.org&utm_campaign=api&utm_content=thumbnail
+- 2026-11-14 16:37 downloaded img_arcadia-planitia-ice.jpg (0.2 MB) from https://thumb.wikimedia.org/wikipedia/commons/thumb/c/cd/Arcadia_Planitia_-_topography_map.jpg/960px-Arcadia_Planitia_-_topography_map.jpg?utm_source=en.wikipedia.org&utm_campaign=api&utm_content=thumbnail
+- 2026-11-14 16:37 downloaded img_deuteronilus-mensae.jpg (0.2 MB) from https://thumb.wikimedia.org/wikipedia/commons/thumb/7/71/Mapdeuteronilus.jpg/960px-Mapdeuteronilus.jpg?utm_source=en.wikipedia.org&utm_campaign=api&utm_content=thumbnail
+- 2026-11-14 16:37 downloaded img_hebrus-valles.jpg (0.0 MB) from https://upload.wikimedia.org/wikipedia/commons/e/e2/Hebrus_Valles.JPG?utm_source=en.wikipedia.org&utm_campaign=api&utm_content=thumbnail_unscaled
+- 2026-11-14 16:37 downloaded img_arsia-mons-skylights.jpg (0.1 MB) from https://upload.wikimedia.org/wikipedia/commons/b/bf/Arsia_Mons_PIA02804.jpg?utm_source=en.wikipedia.org&utm_campaign=api&utm_content=thumbnail_unscaled
+- 2026-11-14 16:37 curated tables enriched; 24 demo images saved locally
+
+## Phase 1b: Moon crater counts DONE (16:35)
+- Robbins 2018 bundle (96 MB) came from astrogeology.usgs.gov/ckan (astropedia host stays down). crater_density_5km_n and _20km_n now filled. 20 km counts are quantised at 2-degree cells (median 0); scoring uses the 5 km column.
+
+## Phase 2: Earth (2026-11-14 ~16:20-16:45) DONE except temperatures
+- Sources downloaded: ETOPO 2022 60 s (478 MB, ngdc), GLiM 0.5 deg (zip with ASCII grid, 38 KB, PANGAEA, arrived on the downloader's 2nd pass), GVP Holocene volcanoes (2.4 MB), Natural Earth land/admin0/admin1, WorldClim 2.1 10 min (7 zips, biogeo.ucdavis.edu mirror worked when geodata.ucdavis.edu did not).
+- NEO is gone: neo.gsfc.nasa.gov returns an HTML page for every data URL. So NO NDVI, aerosol, snow, MODIS LST. Stand-ins (labelled PROXY): barren_pct = clip((250 - precip)/250) x 100; dust_idx = barren x (0.5 + 0.5 clip(wind/6)); permafrost_idx from tavg thresholds (spec fallback); ice_idx = max(lith_ice, permafrost).
+- GLiM is one dominant class per 0.5-degree cell, so lith_*_pct move in steps of 25 percent per 1-degree cell.
+- out/earth_features_1deg.csv (11.5 MB, 22,513 land rows, 47 feature columns) and earth_features_2deg.csv (6,207 land cells). 2-degree = land-area-weighted mean of the four 1-degree cells.
+- Temperature: replaced the MODIS fallback with a full NASA POWER pull (same dataset as the team, 440 land boxes x 3 parameters, cache in raw/power, parallel 6 workers). Writes out/earth_grid_power_full.csv and out/earth_grid_filled.csv, then re-run 20_earth_features.py --force to add temp_* columns.
+- curated/: analog_sites (69 rows), caves (51), impact_structures (76), irish_sites (3) written from my own knowledge; 41_verify_coords.py checked them against Wikipedia: 150 of 199 within 25 km, 17 within 100 km (regions), 2 fixed (Mistastin latitude, Galapagos title). 40_curated_tables.py adds Wikipedia URL/picture/credit; 24 demo pictures saved to out/images (3.5 MB).
+- Cave table is a curated sample of 51 caves, so cave_nearest_* describe nearness to a listed cave, not to all caves. Sardinia ESA CAVES entry (Su Bentu-Sa Oche) has unconfirmed coordinates; the prompt called it "Sa Grutta".
+
+## Phase 3: Mars (2026-11-14 ~16:50) DONE except cave catalog
+- out/mars_features.csv: MOLA megt16 (note: file is megt90n000eb.img, not fb), Robbins crater DB through the USGS pygeoapi (sorted by diameter, 20k per page, 5 km+), TES night thermal inertia (global_ti_night_2007.img; dust_cover_idx proxy), Odyssey GRS 5x5 H2O (valid only equatorward of ~60 deg; poles left blank in weh_pct; water_idx = max(scaled weh, latitude proxy)), SIM 3292 geology shapefile (809 MB zip, 8 unit groups, every cell sums to 100 percent), lavatube_idx PROXY (0.6 volcanic share + 0.4 closeness to Tharsis/Olympus skylight volcanoes).
+- NOT DONE: Mars cave catalog (astropedia host down; astrogeology.usgs.gov/search/map/mars_cave_catalog resets). Mars dust storms (MDAD, cut-list item). TES albedo.
+- curated/targets_mars.csv: 25 Mars targets; out/targets.csv has 60 rows (35 Moon + 25 Mars).

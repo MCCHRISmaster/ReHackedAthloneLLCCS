@@ -35,7 +35,7 @@ def wiki_coords(titles: list[str]) -> dict[str, tuple[str, float, float]]:
                                     "coprimary": "primary", "redirects": 1, "format": "json",
                                     "titles": "|".join(chunk)})
         r = subprocess.run(["curl", "-sL", "--retry", "5", "--retry-all-errors", "--max-time", "40",
-                            "-A", UA, f"{API}?{q}"], capture_output=True, text=True, timeout=120)
+                            "-A", UA, f"{API}?{q}"], capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=120)
         try:
             data = json.loads(r.stdout)
         except json.JSONDecodeError:

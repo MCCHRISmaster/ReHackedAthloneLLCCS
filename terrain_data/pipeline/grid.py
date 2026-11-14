@@ -108,6 +108,26 @@ def slope_deg(dem: np.ndarray, cell_km: float, lats_deg: np.ndarray) -> np.ndarr
     return np.degrees(np.arctan(np.hypot(gx, gy)))
 
 
+def slope_stride_deg(dem: np.ndarray, px_km: float, lats_deg: np.ndarray) -> np.ndarray:
+    """Slope in degrees from a lat/lon DEM in metres, safe near the poles.
+
+    East-west pixels shrink toward the poles, where a one-pixel difference is just noise. So each
+    row uses a stride of k = ceil(1/cos(lat)) pixels (capped at 64) to keep the east-west baseline
+    near one pixel width of true distance. The baseline is `px_km` at the equator.
+    """
+    dy = px_km * 1000.0
+    gy = np.gradient(dem, axis=0) / dy
+    gx = np.zeros_like(dem)
+    k_row = np.minimum(64, np.ceil(1.0 / np.maximum(np.cos(np.radians(lats_deg)), 1e-6))).astype(int)
+    for k in np.unique(k_row):
+        sel = np.where(k_row == k)[0]
+        seg = dem[sel]
+        diff = (np.roll(seg, -k, axis=1) - np.roll(seg, k, axis=1)) / (2 * k)
+        dx = dy * np.maximum(np.cos(np.radians(lats_deg[sel])), 1e-6)[:, None]
+        gx[sel] = diff / dx
+    return np.degrees(np.arctan(np.hypot(gx, gy)))
+
+
 # ----------------------------------------------------------------------------- point sets
 
 def haversine_km(lat1, lon1, lat2, lon2, body: str = "earth"):

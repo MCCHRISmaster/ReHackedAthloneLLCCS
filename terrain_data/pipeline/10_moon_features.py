@@ -32,8 +32,8 @@ LOLA = f"{PDS}/lro/lro-l-lola-3-rdr-v1/lrolol_1xxx/data/lola_gdr/cylindrical/img
 LPGRS = f"{PDS}/lunar/lp-l-grs-5-elem-abundance-v1/lp_9001/data/lpgrs_high1_elem_abundance_2deg.tab"
 PITS = ("https://pds.lroc.im-ldi.com/data/LRO-L-LROC-5-RDR-V1.0/LROLRC_2001/EXTRAS/SHAPEFILE/"
         "LUNAR_PIT_LOCATIONS/LUNAR_PIT_LOCATIONS.CSV")
-ROBBINS = ("https://astropedia.astrogeology.usgs.gov/download/Moon/Research/Craters/"
-           "lunar_crater_database_robbins_2018.zip")
+ROBBINS = ("https://astrogeology.usgs.gov/ckan/dataset/f89f5478-b69a-486c-b9b5-30d7b0c5ad2b/resource/"
+           "c4f25cc2-4f8a-4207-a845-5e176da3ac5a/download/lunar_crater_database_robbins_2018")
 
 
 def slope_with_stride(dem: np.ndarray, px_km: float, lats: np.ndarray) -> np.ndarray:
@@ -82,11 +82,12 @@ def block_dem() -> dict:
 def block_craters() -> dict:
     """Robbins crater counts per 100,000 km2 for D>=5 km and D>=20 km."""
     import pandas as pd
-    p = fetch(ROBBINS, "moon_robbins_2018.zip", rounds=3)
+    p = fetch([ROBBINS, ROBBINS + ".zip"], "moon_robbins_2018.dat", rounds=3)
     if p is None:
         return {}
     with zipfile.ZipFile(p) as z:
-        name = next(n for n in z.namelist() if n.lower().endswith(".csv"))
+        csvs = [i for i in z.infolist() if i.filename.lower().endswith(".csv")]
+        name = max(csvs, key=lambda i: i.file_size).filename            # the big data table in the bundle
         df = pd.read_csv(z.open(name), usecols=["LAT_CIRC_IMG", "LON_CIRC_IMG", "DIAM_CIRC_IMG"])
     lon = ((df.LON_CIRC_IMG.to_numpy() + 180) % 360) - 180
     lat = df.LAT_CIRC_IMG.to_numpy()
