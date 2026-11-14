@@ -32,6 +32,9 @@
       <button class="mode-toggle" id="btn-detail" aria-pressed="false" title="Switch between a simple overview and full technical detail (D)">
         <span class="mode-dot"></span><span class="mode-label">SIMPLE VIEW</span>
       </button>
+      <button class="mode-toggle" id="btn-data" aria-pressed="false" title="Browse all the NASA data used (N)">
+        <span class="mode-dot"></span>NASA DATA
+      </button>
     </div>
     <div class="status" id="status">
       <span class="status-dot"></span><span id="status-text">INITIALISING…</span>
@@ -68,7 +71,18 @@
     <button class="ctl" id="btn-zoom-out" title="Zoom out (−)">－</button>
     <button class="ctl" id="btn-rotate" title="Toggle auto-rotate (R)" aria-pressed="true">⟳</button>
     <button class="ctl" id="btn-reset" title="Reset view (H)">⌂</button>
+    <button class="ctl" id="btn-help" title="How to explore (?)">?</button>
   </div>
+
+  <div class="help-card panel hidden" id="help-card" role="dialog" aria-labelledby="help-title"></div>
+
+  <!-- NASA DATA tab (built by js/datatab.js) -->
+  <section class="panel data-panel hidden" id="data-panel" role="dialog" aria-label="NASA data">
+    <div class="panel-head"><span>NASA DATA</span>
+      <button class="brief-close data-close" id="data-close" aria-label="Close NASA data">✕</button></div>
+    <nav class="data-tabs" id="data-tabs" aria-label="Data sections"></nav>
+    <div class="data-body" id="data-body"></div>
+  </section>
 
   <footer class="hud-bottom">
     <div class="readout"><span class="lbl">LAT</span><span id="ro-lat">—</span></div>

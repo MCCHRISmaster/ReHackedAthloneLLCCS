@@ -1,7 +1,7 @@
 /**
  * App entry point: owns state and wires the globe, data and HUD together.
  */
-import { CAMERA, BODIES, ONLINE_MODE, SCALES } from './config.js';
+import { CAMERA, BODIES, ONLINE_MODE, SCALES, ILLUSTRATED } from './config.js';
 import { SITES } from './data/sites.js';
 import { GlobeView } from './globe.js';
 import { probeOnline } from './layers.js';
@@ -11,6 +11,7 @@ import { MiniMap } from './minimap.js';
 import { SpaceBackdrop } from './space.js';
 import * as ui from './ui.js';
 import * as temp from './temperature.js';
+import * as dataTab from './datatab.js';
 
 const state = {
   body: 'earth',
@@ -74,10 +75,23 @@ function refreshImagery() {
     refreshImagery();
   });
   const body = BODIES[state.body];
-  const def = body.layers.find((l) => l.id === layerId);
+  const def = body.layers.find((l) => l.id === (layerId === 'illustrated' ? ILLUSTRATED[state.body].from : layerId));
   let credit = state.online && def ? `Imagery: ${def.note}` : `Imagery: ${body.offlineLayer.note}`;
+  if (layerId === 'illustrated') credit = `Illustrated from ${credit.replace('Imagery: ', '')}`;
   if (state.tactical && state.online) credit += ` · ${body.tactical.contours.note}`;
   ui.setCredit(credit);
+  syncPlanetLooks();
+}
+
+/**
+ * Background / stand-in planets show each body with the imagery chosen for it
+ * (its default until you pick one) and in Tactical style when Tactical is on.
+ */
+function syncPlanetLooks() {
+  if (!space) return;
+  Object.values(BODIES).filter((b) => b.enabled).forEach((b) => {
+    space.setLook(b.id, { layerId: state.basemap[b.id] || ui.defaultBasemap(b.id, state.online), tactical: state.tactical });
+  });
 }
 
 /* ---------------- temperature match ---------------- */
@@ -115,10 +129,19 @@ function refreshTemp() {
 
 function drawHeat() {
   const t = state.temp, grid = t.grids[state.body];
-  if (!heatShownOn(state.body) || !grid) { globe.setHeatmap(null); return; }
+  if (!heatShownOn(state.body) || !grid) { globe.setHeatmap(null); globe.setBestMatch(null); return; }
   const target = t.ref[t.stat];
   globe.setHeatmap(temp.renderMatchCanvas(grid, t.stat, target, t.range, { gridLines: t.gridLines }));
-  ui.updateTempSummary(temp.summarize(grid, t.stat, target, t.range), t);
+  const s = temp.summarize(grid, t.stat, target, t.range);
+  // Best-match marker: recomputed for whichever globe is showing, so it is always on the 3D model
+  globe.setBestMatch(s && s.best > 0
+    ? { lat: s.lat, lon: s.lon, label: `BEST MATCH ${Math.round(s.best * 100)}% · ${s.temp.toFixed(1)}°C` }
+    : null);
+  ui.updateTempSummary(s, t, () => {
+    globe.setAutoRotate(false);
+    setRotateButton(false);
+    globe.flyTo(s.lat, s.lon, globe.radius * 1.2);
+  });
 }
 
 let heatQueued = false;
@@ -194,9 +217,9 @@ function setBody(bodyId, after = null) {
   state.selectedId = null;
   clearProbe();
   closePanel();
-  state.basemap[bodyId] ||= BODIES[bodyId].defaultLayer;
+  state.basemap[bodyId] ||= ui.defaultBasemap(bodyId, state.online);
   globe.setBody(bodyId);
-  if (state.online) globe.setBasemap(state.basemap[bodyId]);
+  globe.setBasemap(state.basemap[bodyId]);
   ui.renderBodyTabs(bodyId, (id) => switchBody(id));
   document.body.dataset.body = bodyId;
   minimap.setBody(bodyId);
@@ -214,11 +237,41 @@ function switchBody(bodyId, after = null) {
   if (state.switching) return;
   state.switching = true;
   ui.renderBodyTabs(bodyId, (id) => switchBody(id)); // label updates straight away
+  // First ease the real globe back to the overview (if zoomed in or tilted), so the stand-in
+  // planet can take over at exactly the same size and nothing jumps.
+  globe.pullBackToHome().then(() => startSwitch(bodyId, after));
+}
+
+function startSwitch(bodyId, after) {
   space.transitionTo(bodyId, {
     canvas: globe.canvas,
-    globeRadiusPx: globe.screenRadiusPx(),
-    swap: () => setBody(bodyId, after),
+    globeRadiusPx: globeRadiusEstimate(),   // from the camera distance (exact right after the pull-back)
+    swap: () => {
+      setBody(bodyId, after);
+      globe.autoRotate = false; // hold still at the home view so it matches the stand-in when it fades in
+    },
+    fromView: { ...(({ lat, lon }) => ({ lat, lon }))(globe.cameraState()), rotating: globe.isAutoRotating() },
+    toView: { lat: BODIES[bodyId].home.latitude, lon: BODIES[bodyId].home.longitude },
+    ready: () => globe.whenSettled(),
+    onHandBack: (view) => {
+      if (after) return;   // a fly-to (site / best match) is taking the camera elsewhere
+      // carry on from exactly where the spinning stand-in is, still turning, so there is no cut
+      globe.lookAt(view.lat, view.lon);
+      globe.setAutoRotate(true);
+      setRotateButton(true);
+    },
   }).then(() => { state.switching = false; });
+}
+
+/**
+ * On-screen globe radius from the camera range, scaled from the measured home
+ * view (cheap enough to call every frame, unlike screenRadiusPx()).
+ */
+function globeRadiusEstimate() {
+  if (!globe || !globe.body) return 0;
+  const R = globe.radius, range = globe.wwd.navigator.range;
+  const ang = (r) => Math.tan(Math.asin(1 / (1 + r)));
+  return homeRadiusRatio * window.innerHeight * (ang(range / R) / ang(CAMERA.homeRangeRadii));
 }
 
 function closePanel() {
@@ -298,6 +351,12 @@ function setTactical(on) {
 /** Simple ↔ Detailed view: re-render whatever panel is open so it picks up the new defaults. */
 function toggleDetail() {
   ui.setSimple(!ui.isSimple());
+  globe.setSimple(ui.isSimple());
+  // each view has its own default look: illustrated planets (Simple) or real imagery (Detailed)
+  state.basemap = { [state.body]: ui.defaultBasemap(state.body, state.online) };
+  globe.setBasemap(state.basemap[state.body]);
+  refreshImagery();
+  refreshSites();
   if (state.panel === 'probe' && state.probe) runProbe();
   else if (state.panel === 'site' && state.selectedId) selectSite(byId[state.selectedId], { fly: false });
 }
@@ -314,9 +373,13 @@ function bindControls() {
   $('btn-rotate').onclick = () => { const on = !globe.autoRotate; globe.setAutoRotate(on); setRotateButton(on); };
   $('btn-tactical').onclick = () => setTactical(!state.tactical);
   $('btn-detail').onclick = () => toggleDetail();
+  $('btn-data').onclick = () => dataTab.toggleDataTab(state.body);
   window.addEventListener('keydown', (e) => {
     if (e.target.closest('input, textarea')) return;
     const k = e.key.toLowerCase();
+    if (k === 'n') { dataTab.toggleDataTab(state.body); return; }
+    if (k === 'escape' && dataTab.isOpen()) { dataTab.closeDataTab(); return; }
+    if (dataTab.isOpen()) return;          // keep globe shortcuts quiet while the data tab is open
     if (k === '+' || k === '=') $('btn-zoom-in').click();
     else if (k === '-' || k === '_') $('btn-zoom-out').click();
     else if (k === 'r') $('btn-rotate').click();
@@ -355,12 +418,14 @@ async function init() {
     online: state.online,
     getCamera: () => globe.cameraState(),
     getHomeRadius: () => homeRadiusRatio * window.innerHeight,
+    getGlobeRadius: () => globeRadiusEstimate(),
   });
 
   globe
     .on('select', (site) => { if (site) selectSite(site); })
     .on('probe', (p) => {
       probeAt(p.lat, p.lon);              // teammate's multi-metric probe (right panel)
+      if (ui.isSimple()) globe.centreOn(p.lat, p.lon);   // Simple view: bring the clicked spot to the middle
       // temperature reference for the heat map (left panel): Earth via NASA POWER, Moon/Mars from the grid
       if (state.body === 'earth') setTempReference(p.lat, p.lon, 'Selected point');
       else setBodyReference(state.body, p.lat, p.lon);
@@ -376,6 +441,8 @@ async function init() {
     .on('camera', (c) => { ui.updateAltitude(c.range); minimap.setCamera(c); });
 
   ui.applyViewMode();
+  globe.setSimple(ui.isSimple());
+  ui.initHelp();
   ui.makeCollapsible(document.getElementById('site-list-panel'), 'sites');
   ui.makeCollapsible(document.getElementById('imagery-panel'), 'imagery', { simpleCollapsed: true });
   ui.makeCollapsible(document.getElementById('minimap'), 'minimap');
@@ -390,6 +457,7 @@ async function init() {
   }, 600);
   loadLandMask().then(warmUp);
   loadGrids();
+  dataTab.initDataTab({ grids: () => state.temp.grids });
   window.analogAtlas = { globe, state, SITES, setBody, switchBody, selectSite, probeAt, setTactical, setTempReference, setBodyReference }; // console debugging
 }
 

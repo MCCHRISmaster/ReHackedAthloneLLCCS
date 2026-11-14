@@ -6,7 +6,7 @@
  *   - Blue Marble Next Generation bundled with WebWorldWind
  */
 import { TREK_BASE, GIBS_WMS } from './config.js';
-import { hatchDisc } from './tactical-fx.js';
+import { hatchDisc, TACTICAL_FX } from './tactical-fx.js';
 
 const DETAIL = 1.5; // lower = sharper (more tiles); WorldWind default is 1.75
 
@@ -130,9 +130,9 @@ const rgba = (hex, a) => {
 export function createGridLayer(accentHex, stepDeg = 15) {
   const layer = new WorldWind.RenderableLayer('Sector grid');
   const minor = new WorldWind.ShapeAttributes(null);
-  minor.outlineColor = rgba(accentHex, 0.22); minor.outlineWidth = 1; minor.drawInterior = false;
+  minor.outlineColor = rgba(accentHex, TACTICAL_FX.gridMinor); minor.outlineWidth = 1; minor.drawInterior = false;
   const major = new WorldWind.ShapeAttributes(minor);
-  major.outlineColor = rgba(accentHex, 0.5); major.outlineWidth = 1.5;
+  major.outlineColor = rgba(accentHex, TACTICAL_FX.gridMajor); major.outlineWidth = 1.5;
   for (let lon = -180; lon < 180; lon += stepDeg) {
     const pts = [];
     for (let lat = -88; lat <= 88; lat += 4) pts.push(new WorldWind.Location(lat, lon));
@@ -155,7 +155,7 @@ export function createZoneLayer(sites, accentHex, radiusM, bodyRadiusM) {
   const layer = new WorldWind.RenderableLayer('Target zones');
   const ringAttrs = new WorldWind.ShapeAttributes(null);
   ringAttrs.drawInterior = false;
-  ringAttrs.outlineColor = rgba(accentHex, 0.85);
+  ringAttrs.outlineColor = rgba(accentHex, TACTICAL_FX.zoneRing);
   ringAttrs.outlineWidth = 2;
   const disc = new WorldWind.ImageSource(hatchDisc(accentHex));
   const cap = new WorldWind.ImageSource(hatchDisc(accentHex, 256, { fullCap: true }));

@@ -33,6 +33,15 @@ matches; click a small map to go there.
 Simple view (the default for new visitors) uses everyday names ("Steepness" rather than "Slope") and keeps
 tables closed; Detailed view opens them. Open/closed choices are remembered in the browser.
 
+## Simple view globes
+- **Globes use the real NASA imagery in both views.** An optional "Illustrated" look (flat map colours with
+  outlines, redrawn per tile by `illustrateImagery` in `js/tactical-fx.js`; colours in `ILLUSTRATED`,
+  `js/config.js`) is at the top of the Imagery list for anyone who wants it.
+- **Cleaner globe:** round pins with names only on hover or selection, no scanlines, a soft glow behind
+  the planet, and Earth lit on the side facing you (no night side).
+- **Easier to move:** north-up with no tilt, zoom kept between 0.003 and 6 planet radii (`SIMPLE_NAV`), and
+  clicking a spot gently centres it. A "How to explore" card greets first-time visitors (reopen with `?`).
+
 - **Metrics, weights, scales and planned NASA sources** are in `js/config.js` (`METRICS`, `SCALES`).
   Human scale averages over ~500 m, Rover over ~10 km, and the two weight metrics differently.
 - **Score rule:** per metric `max(0, 1 − |Δ| / range)` (same rule as the team's temperature prototype), then a weighted mean.
@@ -55,7 +64,7 @@ tables closed; Detailed view opens them. Open/closed choices are remembered in t
     js/explain.js       plain-language "why test here" explanations built from a probe result
     js/minimap.js       minimap panel (camera view box, sites, probe + best-match pins)
     js/space.js         planet wheel behind the globe + wheel-spin switch animation
-    js/planet-art.js    CSS planet spheres and flat maps used by the backdrop and minimap
+    js/planet-art.js    rotating 3-D background globes (NASA imagery on a lit sphere), CSS fallback spheres, flat minimap maps
     js/main.js          app state + wiring
     lib/worldwind.min.js  WebWorldWind bundled from source (commit 5ffe2df, v0.11.0)
     lib/images/         Blue Marble, night lights, star field (from the WorldWind repo)
@@ -86,6 +95,12 @@ A stylised mission-map mode built from the same NASA data:
 Tune it per body in `BODIES.<id>.tactical` in `js/config.js` (bands, brightness ceiling, edge strength,
 contour count). The effects live in `js/tactical-fx.js`; tiles are transformed once as they load and
 cached separately from the real-colour tiles, so switching views is instant after the first pass.
+Overlay strengths (grid, zone rings and hatching) shared by the globe and the background planets are in
+`TACTICAL_FX` at the top of `js/tactical-fx.js`.
+
+The 3-D background planets (and the stand-in during a switch) always mirror their globe: each shows the
+imagery layer picked for that body in the Imagery panel, and the Tactical styling (stylised imagery,
+contours, grid) while Tactical is on.
 
 ## Adding a layer
 Add an entry to a body's `layers` array in `js/config.js`:

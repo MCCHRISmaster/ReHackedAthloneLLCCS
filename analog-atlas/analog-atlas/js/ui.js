@@ -110,27 +110,31 @@ export function renderSiteList(bodyId, sites, activeId, { onClick, onHover }) {
   });
 }
 
+/** Default basemap for a body: real NASA imagery in both views ("Illustrated" stays available in the list). */
+export function defaultBasemap(bodyId, online) {
+  return online ? BODIES[bodyId].defaultLayer : 'offline';
+}
+
 /** Imagery (basemap) selector for the active body. */
 export function renderImagery(bodyId, online, activeLayerId, onSelect) {
   const body = BODIES[bodyId];
   const box = $('imagery-list');
   box.innerHTML = '';
+  const options = [
+    { id: 'illustrated', label: 'Illustrated', note: 'Simple map colours, redrawn from NASA imagery' },
+    ...(online ? body.layers : [{ id: 'offline', label: body.offlineLayer.label, note: body.offlineLayer.note }]),
+  ];
   if (!online) {
-    box.innerHTML = `
-      <div class="layer-opt active offline"><span class="radio"></span>
-        <div><div class="layer-name">${esc(body.offlineLayer.label)}</div>
-        <div class="layer-note">${esc(body.offlineLayer.note)}</div></div></div>
-      <div class="layer-warn">OFFLINE — NASA tile servers unreachable from this page. Run it from a local server with internet to load Trek / GIBS imagery.</div>`;
-    return;
+    box.insertAdjacentHTML('beforeend', '<div class="layer-warn">OFFLINE — NASA tile servers unreachable from this page. Run it from a local server with internet to load Trek / GIBS imagery.</div>');
   }
-  body.layers.forEach((def) => {
+  options.forEach((def) => {
     const opt = document.createElement('button');
     opt.className = 'layer-opt' + (def.id === activeLayerId ? ' active' : '');
     opt.setAttribute('aria-pressed', String(def.id === activeLayerId));
     opt.innerHTML = `<span class="radio"></span>
       <div><div class="layer-name">${esc(def.label)}</div><div class="layer-note">${esc(def.note)}</div></div>`;
     opt.addEventListener('click', () => onSelect(def.id));
-    box.appendChild(opt);
+    box.insertBefore(opt, box.querySelector('.layer-warn'));
   });
 }
 
@@ -358,7 +362,7 @@ function gridNote(m) {
 }
 
 /** s = summary from temperature.summarize() or null */
-export function updateTempSummary(s, m) {
+export function updateTempSummary(s, m, onGoBest) {
   const el = $('temp-summary');
   if (!el) return;
   if (!s) { el.innerHTML = 'No grid data loaded.'; return; }
@@ -367,7 +371,9 @@ export function updateTempSummary(s, m) {
     return;
   }
   el.innerHTML = `BEST <b>${Math.round(s.best * 100)}%</b> at ${fmtLat(s.lat)} ${fmtLon(s.lon)} (${fmtC(s.temp)})<br>` +
-    `<b>${(s.goodShare * 100).toFixed(1)}%</b> of surface ≥ 75% match`;
+    `<b>${(s.goodShare * 100).toFixed(1)}%</b> of surface ≥ 75% match` +
+    (onGoBest ? '<button class="mini-btn wide temp-best">GO TO BEST MATCH ▸</button>' : '');
+  el.querySelector('.temp-best')?.addEventListener('click', onGoBest);
 }
 
 export function updateTempReadout(text) { $('ro-temp').textContent = text || '—'; }
@@ -468,4 +474,38 @@ export function showProbe(result, explanations, { onScale, onClose, onViewMatch,
   el.querySelector('.zoom-area').addEventListener('click', onZoomArea);
   bindSections(el);
   el.classList.remove('hidden');
+}
+
+/* ------------------------------------------------------------------------ *
+ *  "How to explore" card: shown once to first-time visitors, reopened with
+ *  the ? button (or the ? key).
+ * ------------------------------------------------------------------------ */
+const HELP_KEY = 'analog-atlas-help-seen';
+
+export function initHelp() {
+  const card = $('help-card');
+  card.innerHTML = `
+    <div class="help-kicker">WELCOME TO ANALOG ATLAS</div>
+    <h2 id="help-title">How to explore</h2>
+    <ul class="help-list">
+      <li><span class="help-key">DRAG</span><span>Spin the planet. <b>Scroll</b> or <b>＋ / －</b> to zoom.</span></li>
+      <li><span class="help-key">CLICK</span><span>Any spot on the ground to see how closely it matches the other worlds, and what you could test there.</span></li>
+      <li><span class="help-key">PLANETS</span><span>Click a planet in the background, or use <b>◀ ▶</b> at the bottom, to travel there.</span></li>
+      <li><span class="help-key">PINS</span><span>Coloured pins are known test sites. Hover to see the name, click for the story.</span></li>
+      <li><span class="help-key">MORE</span><span><b>Simple view</b> (top) switches to full technical detail when you want the numbers.</span></li>
+    </ul>
+    <button class="help-ok">GOT IT</button>`;
+  const close = () => {
+    card.classList.add('hidden');
+    try { localStorage.setItem(HELP_KEY, '1'); } catch { /* storage blocked */ }
+  };
+  card.querySelector('.help-ok').addEventListener('click', close);
+  $('btn-help').addEventListener('click', () => card.classList.toggle('hidden'));
+  window.addEventListener('keydown', (e) => {
+    if (e.key === '?') card.classList.toggle('hidden');
+    else if (e.key === 'Escape' && !card.classList.contains('hidden')) close();
+  });
+  let seen = false;
+  try { seen = !!localStorage.getItem(HELP_KEY); } catch { /* storage blocked */ }
+  card.classList.toggle('hidden', seen);
 }

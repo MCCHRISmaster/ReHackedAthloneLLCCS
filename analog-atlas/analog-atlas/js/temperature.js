@@ -42,7 +42,7 @@ export function matchColor(t) {
 
 /* ---------------- CSV grids ---------------- */
 
-function parseCSV(text) {
+export function parseCSV(text) {
   const rows = [];
   let row = [], field = '', q = false;
   for (let i = 0; i < text.length; i++) {
@@ -72,15 +72,25 @@ export function gridFromCSV(text, body) {
   g.high = g.mean.slice(); g.low = g.mean.slice();
   let cells = 0;
   const sources = new Set();
-  for (const r of parseCSV(text)) {
+  const rows = parseCSV(text);
+  // every numeric column (temperatures, pressure, water vapour, ...) for the NASA DATA tab
+  const skip = new Set(['body', 'lat', 'lon', 'source_id']);
+  g.columns = {};
+  Object.keys(rows[0] || {}).filter((c) => !skip.has(c)).forEach((c) => {
+    g.columns[c] = new Float32Array(ROWS * COLS).fill(NaN);
+  });
+  for (const r of rows) {
     if ((r.body || '').toLowerCase() !== body) continue;
     if (r.source_id) sources.add(r.source_id);
     const row = (90 - RES / 2 - Number(r.lat)) / RES, col = (Number(r.lon) + 180 - RES / 2) / RES;
     if (!Number.isInteger(row) || !Number.isInteger(col) || row < 0 || row >= ROWS || col < 0 || col >= COLS) continue;
     const i = row * COLS + col;
     for (const [k, s] of Object.entries(STATS)) g[k][i] = r[s.col] === '' ? NaN : Number(r[s.col]);
+    for (const c in g.columns) if (r[c] !== '' && r[c] != null) g.columns[c][i] = Number(r[c]);
     cells++;
   }
+  // drop columns that are empty everywhere (e.g. elevation not filled in yet)
+  for (const c in g.columns) if (!g.columns[c].some((v) => !Number.isNaN(v))) delete g.columns[c];
   g.cells = cells;
   g.filled = g.mean.reduce((n, v) => n + (Number.isNaN(v) ? 0 : 1), 0);  // cells with a temperature
   g.sourceIds = [...sources];
@@ -179,6 +189,25 @@ export function summarize(grid, stat, target, range) {
     if (m > best) { best = m; bestI = i; }
   }
   if (bestI < 0) return null;
+  // Ties (often many cells at ~100%): choose the one whose 3×3 neighbourhood matches best,
+  // so the marker lands in the middle of the strongest matching area, not an arbitrary edge cell.
+  let bestHood = -1;
+  for (let i = 0; i < ROWS * COLS; i++) {
+    const m = matchValue(grid, i, stat, target, range);
+    if (Number.isNaN(m) || m < best - 0.005) continue;
+    const r = Math.floor(i / COLS), c = i % COLS;
+    let sum = 0, n = 0;
+    for (let dr = -1; dr <= 1; dr++) {
+      const rr = r + dr;
+      if (rr < 0 || rr >= ROWS) continue;
+      for (let dc = -1; dc <= 1; dc++) {
+        const v = matchValue(grid, rr * COLS + ((c + dc + COLS) % COLS), stat, target, range);
+        if (!Number.isNaN(v)) { sum += v; n++; }
+      }
+    }
+    const hood = n ? sum / n : 0;
+    if (hood > bestHood) { bestHood = hood; bestI = i; best = m; }
+  }
   return {
     best,
     lat: 90 - (Math.floor(bestI / COLS) + 0.5) * RES,
