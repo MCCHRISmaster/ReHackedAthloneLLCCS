@@ -341,6 +341,72 @@ export const VARIABLES = [
   } },
 ];
 
+/* ---------------- per-variable match (grid buttons) ----------------
+ * NUM: one comparable number per cell (same units on every world).
+ * CMP: how two values are compared -> 0..1 similarity.
+ *   range: 1 − |a − b| / range        log: 1 − |log10(a+eps) − log10(b+eps)| / decades
+ * Variables missing here have no counterpart on the other worlds (no % possible).
+ */
+const col = (g, c, i) => (g && g.columns && g.columns[c] ? g.columns[c][i] : NaN);
+const NUM = {
+  temp_mean: (b, i, g) => g.mean[i],
+  temp_high: (b, i, g) => g.high[i],
+  temp_low: (b, i, g) => g.low[i],
+  swing: (b, i, g) => g.high[i] - g.low[i],
+  pressure: (b, i, g) => col(g, 'pressure_pa', i),
+  vapour: (b, i, g) => (b === 'moon' ? 0 : col(g, 'water_vapour_mm', i)),
+  solar: (b, i) => solarAt(b, i),
+  wind: (b, i) => windAt(b, i),
+  dust: (b, i) => (b === 'earth' ? featureAt('earth', 'dust_idx', i) : b === 'mars' ? featureAt('mars', 'dust_cover_idx', i) : NaN),
+  precip: (b, i) => (b === 'earth' ? featureAt('earth', 'precip_mm_yr', i) : 0),
+  ice: (b, i) => (b === 'earth' ? NaN : featureAt(b, 'water_idx', i)),
+  elevation: (b, i) => featureAt(b, b === 'earth' ? 'elev_mean_m' : 'elevation_m', i),
+  slope: (b, i) => featureAt(b, 'slope_mean_deg', i),
+  roughness: (b, i) => featureAt(b, 'roughness_m', i),
+  relief: (b, i) => featureAt(b, 'relief_m', i),
+};
+export const VAR_CMP = {
+  temp_mean: { range: 'temp', how: '100% − difference ÷ temperature range (Advanced options)' },
+  temp_high: { range: 'temp', how: '100% − difference ÷ temperature range (Advanced options)' },
+  temp_low: { range: 'temp', how: '100% − difference ÷ temperature range (Advanced options)' },
+  swing: { range: 40, how: '0% at 40 °C apart' },
+  pressure: { log: 3, eps: 1, how: 'log scale, 0% at 1000× apart' },
+  vapour: { log: 3, eps: 0.001, how: 'log scale, 0% at 1000× apart' },
+  solar: { range: 150, how: '0% at 150 W/m² apart' },
+  wind: { range: 8, how: '0% at 8 m/s apart' },
+  dust: { range: 0.6, how: 'dust index, 0% at 0.6 apart' },
+  precip: { range: 500, how: '0% at 500 mm/yr apart' },
+  ice: { range: 0.6, how: 'water index, 0% at 0.6 apart' },
+  elevation: { range: 3000, how: '0% at 3000 m apart' },
+  slope: { range: 6, how: '0% at 6° apart' },
+  roughness: { range: 400, how: '0% at 400 m apart' },
+  relief: { range: 2500, how: '0% at 2500 m apart' },
+};
+export const varValue = (id, body, i, grid) => (NUM[id] && grid ? NUM[id](body, i, grid) : NaN);
+
+/**
+ * Similarity of one variable between the reference cell and every target cell.
+ * Returns { scores: Float32Array, refValue } or null when the two worlds can't be compared.
+ */
+export function variableScores(id, refBody, refI, refGrid, target, grid, tempRange) {
+  const cmp = VAR_CMP[id];
+  if (!cmp || !NUM[id] || !grid || !refGrid) return null;
+  const a = NUM[id](refBody, refI, refGrid);
+  if (a == null || Number.isNaN(a)) return null;
+  const range = cmp.range === 'temp' ? tempRange : cmp.range;
+  const out = new Float32Array(N);
+  let any = false;
+  for (let i = 0; i < N; i++) {
+    const b = NUM[id](target, i, grid);
+    if (b == null || Number.isNaN(b)) { out[i] = NaN; continue; }
+    any = true;
+    out[i] = cmp.log
+      ? clamp01(1 - Math.abs(Math.log10(a + cmp.eps) - Math.log10(b + cmp.eps)) / cmp.log)
+      : clamp01(1 - Math.abs(a - b) / range);
+  }
+  return any ? { scores: out, refValue: a } : null;
+}
+
 export const VARIABLE_SOURCES = {
   earth: 'NASA POWER (temperature, pressure, water vapour) · WorldClim 2.1 (solar, wind, rain) · NOAA ETOPO 2022 (terrain) · NASA Black Marble (night lights)',
   moon: 'LRO Diviner (temperature) · LRO LOLA (terrain) · Lunar Prospector (composition) · solar & Earth visibility calculated from position · ice index is a latitude-based estimate',

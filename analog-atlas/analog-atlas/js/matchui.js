@@ -10,8 +10,8 @@
 import { BODIES } from './config.js';
 import { mapHTML, mapXY } from './planet-art.js';
 import {
-  MATCH_METRICS, renderScoreCanvas, VARIABLES, VARIABLE_SOURCES, BODY_CONSTANTS,
-  cellIndex, SOLAR_RANGE, WIND_RANGE, PRESS_DECADES,
+  MATCH_METRICS, renderScoreCanvas, VARIABLES, BODY_CONSTANTS,
+  cellIndex, SOLAR_RANGE, WIND_RANGE, PRESS_DECADES, VAR_CMP,
 } from './match.js';
 import { matchColor } from './temperature.js';
 
@@ -74,7 +74,7 @@ export function renderMatchBar(m, { onPick, onGoRef, onGoBest }) {
   }).join('');
   el.innerHTML = `<span class="mb-title">LOCATION MATCH</span>${chips}
     <span class="mb-sep"></span>
-    <button class="mb-go" id="mb-go-ref" title="Fly to your chosen location" ${m.ref ? '' : 'disabled'}>📍 MY LOCATION</button>
+    <button class="mb-go" id="mb-go-ref" title="Fly to your selected point" ${m.ref ? '' : 'disabled'}>📍 SELECTED POINT</button>
     <button class="mb-go" id="mb-go-best" title="Fly to the best match on ${m.active ? name(m.active) : 'the selected world'}" ${m.ref ? '' : 'disabled'}>🎯 BEST MATCH</button>`;
   el.querySelectorAll('[data-target]').forEach((b) => b.addEventListener('click', () => onPick(b.dataset.target)));
   el.querySelector('#mb-go-ref').addEventListener('click', onGoRef);
@@ -103,8 +103,8 @@ export function renderLeft(m, h) {
         <button class="ml-clear" aria-label="Clear location" title="Clear location">✕</button>
       </div>`;
   }
-  const sym = RAIL_BY[m.metric];
-  const showing = `<div class="ml-showing">Maps show: <b>${sym.icon} ${sym.name.toUpperCase()}</b> <span>(change with the symbols on the right)</span></div>`;
+  const sym = m.heatLabel || heatLabel(m.metric);
+  const showing = `<div class="ml-showing">Maps show: <b>${sym.icon} ${esc(sym.name.toUpperCase())}</b> <span>(change with the symbols on the right)</span></div>`;
 
   const others = Object.keys(BODIES).filter((b) => BODIES[b].enabled && b !== m.current);
   const cards = others.map((b) => {
@@ -125,7 +125,8 @@ export function renderLeft(m, h) {
     } else {
       scores = `<div class="mm2-note">${m.ref ? 'No data' : 'Pick a location to see matches'}</div>`;
     }
-    const v = !isRef && r && r.best ? r.best.scores[m.metric] : NaN;
+    const hv = m.heat && m.heat[b];
+    const v = !isRef && r && r.best && hv ? hv[r.best.i] : NaN;
     const head = !isRef && r && r.best ? `<span class="mm2-pct ${scoreClass(v)}">${pct(v)}</span>` : '';
     return `<div class="mm2-card" data-body="${b}">
         <div class="mm2-head"><span>${BODIES[b].label}</span>${head}</div>
@@ -136,10 +137,24 @@ export function renderLeft(m, h) {
       </div>`;
   }).join('');
 
-  el.innerHTML = `${refHtml}${m.ref ? showing : ''}<div class="mm2-list">${cards}</div>`;
+  // mission-site picker (Moon & Mars targets from data/targets_*.csv)
+  const sites = m.sites || [];
+  const picker = sites.length ? `<label class="ml-picker"><span>🚀 JUMP TO A MISSION SITE</span>
+      <select id="ml-site"><option value="">Choose a Moon or Mars site…</option>
+        ${['moon', 'mars'].map((b) => {
+          const list = sites.filter((s) => s.body === b);
+          const art = list.filter((s) => s.artemis), rest = list.filter((s) => !s.artemis);
+          const opt = (s) => `<option value="${esc(s.id)}">${esc(s.name)}</option>`;
+          return (art.length ? `<optgroup label="${BODIES[b].label} · ARTEMIS III REGIONS">${art.map(opt).join('')}</optgroup>` : '')
+            + (rest.length ? `<optgroup label="${BODIES[b].label} · ${b === 'moon' ? 'LANDINGS, PITS & SCIENCE' : 'MISSIONS & CANDIDATE SITES'}">${rest.map(opt).join('')}</optgroup>` : '');
+        }).join('')}
+      </select></label>` : '';
+  el.innerHTML = `${refHtml}${picker}${m.ref ? showing : ''}<div class="mm2-list">${cards}</div>`;
+  el.querySelector('#ml-site')?.addEventListener('change', (e) => { if (e.target.value) h.onPickSite(e.target.value); });
   others.forEach((b) => {
     const r = m.results[b], slot = el.querySelector(`[data-heat="${b}"]`);
-    if (slot && r && !(m.ref && m.ref.body === b)) slot.appendChild(renderScoreCanvas(r[m.metric], { px: 1, gridLines: false }));
+    const hv = m.heat && m.heat[b];
+    if (slot && hv && !(m.ref && m.ref.body === b)) slot.appendChild(renderScoreCanvas(hv, { px: 1, gridLines: false }));
   });
   el.querySelectorAll('.mm2-map').forEach((b) => b.addEventListener('click', () => h.onPickMap(b.dataset.body)));
   el.querySelector('.ml-clear')?.addEventListener('click', h.onClear);
@@ -181,7 +196,7 @@ export function renderRail(r, { onMetric, heat }) {
   const box = $('rail-metrics');
   if (!box) return;
   box.innerHTML = RAIL.map((s) => {
-    const k = s.key, isGrid = k === 'grid';
+    const k = s.key, isGrid = k === 'grid', noPct = isGrid || k === 'combo';   // combo % is in the top bar already
     const v = !isGrid && r && r.best ? r.best.scores[k] : NaN;
     const has = !Number.isNaN(v);
     const on = openView === k || (!isGrid && heat === k);
@@ -189,7 +204,7 @@ export function renderRail(r, { onMetric, heat }) {
         aria-pressed="${on}" title="${s.name}${isGrid ? ': all variables and body constants' : `${has ? `: ${pct(v)}${r ? ` vs ${name(r.target)}` : ''}` : ' (pick a location first)'}`}"
         style="--tint:${tint(v, 0.25)};--edge:${tint(v, 0.95)}">
         <span class="rail-icon" aria-hidden="true">${s.icon}</span>
-        <span class="rail-pct" style="${has ? `color:${tint(v, 1)}` : ''}">${isGrid ? '' : has ? pct(v) : '—'}</span>
+        ${noPct ? '' : `<span class="rail-pct" style="${has ? `color:${tint(v, 1)}` : ''}">${has ? pct(v) : '—'}</span>`}
         <span class="rail-name">${s.short}</span>
       </button>`;
   }).join('');
@@ -297,28 +312,116 @@ function metricDetail(k, ref, r, stat) {
       : `<p class="md-src">${here}: ${esc(TERRAIN_SOURCE[ref.body])}<br>${there}: ${esc(TERRAIN_SOURCE[r.target])}</p>`}`;
 }
 
-/** ▦ data grid: every variable here vs at the best match, then the whole-body constants. */
-function gridView(ref, r, grids) {
+const VAR_ICON = {
+  temp_mean: '🌡️', temp_high: '🔥', temp_low: '❄️', swing: '↕️', pressure: '⏲️', vapour: '💧', cloud: '☁️', uv: '🕶️',
+  solar: '☀️', wind: '🌬️', dust: '🌫️', precip: '🌧️', soil: '🌱', ice: '🧊', elevation: '🏔️', slope: '📐',
+  roughness: '🧗', relief: '⛰️', inertia: '🧱', rocks: '🪨', earthvis: '📡', co2frost: '🌨️', lights: '🌃',
+};
+const CONST_ICON = {
+  Gravity: '⚖️', Atmosphere: '🫧', 'Day length': '🕐', 'Solar wind at the surface': '☄️', 'Magnetic field': '🧲',
+  'Radiation dose (surface, approx.)': '☢️', 'Sunlight strength (top of air)': '🔆', 'Escape velocity': '🚀',
+};
+const SHORT_LABEL = {
+  temp_mean: 'Avg temp', temp_high: 'Daily high', temp_low: 'Daily low', swing: 'Day–night swing', pressure: 'Pressure',
+  vapour: 'Water vapour', cloud: 'Cloud cover', uv: 'UV index', solar: 'Solar energy', wind: 'Wind', dust: 'Dust',
+  precip: 'Rain', soil: 'Soil wetness', ice: 'Water ice', elevation: 'Elevation', slope: 'Slope', roughness: 'Roughness',
+  relief: 'Relief', inertia: 'Thermal inertia', rocks: 'Rocks', earthvis: 'Earth in view', co2frost: 'CO₂ frost', lights: 'Night lights',
+};
+const SHORT_CONST = {
+  Gravity: 'Gravity', Atmosphere: 'Atmosphere', 'Day length': 'Day length', 'Solar wind at the surface': 'Solar wind',
+  'Magnetic field': 'Magnetic field', 'Radiation dose (surface, approx.)': 'Radiation', 'Sunlight strength (top of air)': 'Sunlight', 'Escape velocity': 'Escape speed',
+};
+
+const CONST_WHY = {
+  Gravity: 'Changes how people walk and lift, how rovers grip, and how dust settles. No Earth site can reduce it.',
+  Atmosphere: 'Decides suit design, how dust moves and how heat escapes.',
+  'Day length': 'Sets power, heating and work schedules. A lunar night lasts about two weeks.',
+  'Solar wind at the surface': 'Charged particles from the Sun charge dust and damage materials where there is no magnetic shield.',
+  'Magnetic field': 'Earth’s field deflects radiation; the Moon and Mars have no global field.',
+  'Radiation dose (surface, approx.)': 'Limits how long crews can stay outside and drives shelter design (regolith, lava tubes).',
+  'Sunlight strength (top of air)': 'Mars gets about 43% of the sunlight Earth and the Moon get, so solar arrays must be larger.',
+  'Escape velocity': 'How hard it is to launch back off the surface, which sets fuel needs for return trips.',
+};
+
+/** Icon + name for whatever the heat map currently shows (a rail symbol or one grid variable). */
+export function heatLabel(metric) {
+  if (metric && metric.startsWith('var:')) {
+    const id = metric.slice(4);
+    return { icon: VAR_ICON[id] || '•', name: SHORT_LABEL[id] || id };
+  }
+  const s = RAIL_BY[metric] || RAIL_BY.combo;
+  return { icon: s.icon, name: s.name };
+}
+
+/** ▦ data grid: every box is a button — VARIED (match % + heat map) and CONSTANT (info card). */
+function gridView(ref, r, m) {
+  const grids = m.grids, scores = m.gridScores || {}, sel = m.selectedVar;
   const here = name(ref.body), there = name(r.target);
   const gi = cellIndex(ref.lat, ref.lon), ti = r.best.i;
   const gH = grids[ref.body], gT = grids[r.target];
-  const cell = (body, i, g, vdef) => {
-    const x = g ? vdef.get(body, i, g) : { text: '—' };
-    const missing = Number.isNaN(x.v) || x.v == null;
-    return `<td class="num ${missing ? 'na' : ''}">${esc(x.text)}</td>`;
+  const val = (body, i, g, vd) => {
+    const x = g ? vd.get(body, i, g) : { v: NaN, text: '—' };
+    return { text: x.text, na: x.v == null || Number.isNaN(x.v) };
   };
-  let group = '';
-  const rows = VARIABLES.map((vd) => {
-    const g = vd.group !== group ? `<tr class="dg-group"><td colspan="3">${esc((group = vd.group).toUpperCase())}</td></tr>` : '';
-    return `${g}<tr><td>${esc(vd.label)}</td>${cell(ref.body, gi, gH, vd)}${cell(r.target, ti, gT, vd)}</tr>`;
+
+  // detail card for the selected box
+  let card = '';
+  const vdSel = VARIABLES.find((v) => v.id === sel);
+  const cSel = BODY_CONSTANTS.find((c) => `const:${c.label}` === sel);
+  if (vdSel) {
+    const s = scores[vdSel.id], cmp = VAR_CMP[vdSel.id];
+    const a = val(ref.body, gi, gH, vdSel), b = val(r.target, ti, gT, vdSel);
+    const comparable = s != null && !Number.isNaN(s);
+    card = `<div class="dg-card" style="--edge:${tint(comparable ? s : NaN, 0.95)}">
+        <div class="dg-card-top"><span class="dg-card-ico">${VAR_ICON[vdSel.id] || '•'}</span>
+          <div><div class="dg-card-name">${esc(vdSel.label)}</div>
+          <div class="dg-card-sub">${comparable ? 'Globe and minimaps now show this match' : 'No match % for this one'}</div></div>
+          ${comparable ? `<b class="dg-card-pct" style="color:${tint(s, 1)}">${pct(s)}</b>` : ''}</div>
+        <table class="metric-table"><tbody>
+          <tr><td>${here} (selected point)</td><td class="num ${a.na ? 'na' : ''}">${esc(a.text)}</td></tr>
+          <tr><td>${there} (best match)</td><td class="num ${b.na ? 'na' : ''}">${esc(b.text)}</td></tr></tbody></table>
+        <p class="md-text">${comparable ? `Scored ${esc(cmp.how)}. Tap the box again to go back to the combo map.`
+          : cmp ? `${a.na ? here : there} has no data for this, so it can't be compared here.`
+          : 'Only one world has this measurement, so there is nothing to compare it with.'}</p>
+      </div>`;
+  } else if (cSel) {
+    card = `<div class="dg-card const">
+        <div class="dg-card-top"><span class="dg-card-ico">${CONST_ICON[cSel.label] || '•'}</span>
+          <div><div class="dg-card-name">${esc(cSel.label)}</div><div class="dg-card-sub">Same everywhere on each world</div></div></div>
+        <table class="metric-table"><tbody>${['earth', 'moon', 'mars'].map((b) =>
+          `<tr class="${b === ref.body || b === r.target ? 'on' : ''}"><td>${name(b)}</td><td class="num">${esc(cSel[b])}</td></tr>`).join('')}</tbody></table>
+        <p class="md-text">${esc(CONST_WHY[cSel.label] || '')}</p>
+      </div>`;
+  } else {
+    card = '<p class="hint-line dg-hint">Tap any box: varied ones colour the globe by how well that measurement matches.</p>';
+  }
+
+  const varied = VARIABLES.map((vd) => {
+    const a = val(ref.body, gi, gH, vd), b = val(r.target, ti, gT, vd);
+    const s = scores[vd.id], comparable = s != null && !Number.isNaN(s);
+    const on = sel === vd.id;
+    return `<button class="dg-tile dg-btn ${comparable ? 'scored' : 'nocmp'} ${on ? 'selected' : ''}" data-item="${vd.id}" data-cmp="${comparable ? 1 : 0}"
+        aria-pressed="${on}" title="${esc(vd.label)}${comparable ? `: ${pct(s)} match` : ''}" style="--tint:${tint(comparable ? s : NaN, 0.18)};--edge:${tint(comparable ? s : NaN, 0.85)}">
+        <span class="dg-ico" aria-hidden="true">${VAR_ICON[vd.id] || '•'}</span>
+        <span class="dg-lbl">${esc(SHORT_LABEL[vd.id] || vd.label)}</span>
+        <span class="dg-pct" style="${comparable ? `color:${tint(s, 1)}` : ''}">${comparable ? pct(s) : '—'}</span>
+        <span class="dg-v ${a.na ? 'na' : ''}"><i>${here}</i>${esc(a.text)}</span>
+        <span class="dg-v ${b.na ? 'na' : ''}"><i>${there}</i>${esc(b.text)}</span>
+      </button>`;
   }).join('');
-  const consts = BODY_CONSTANTS.map((c) => `<tr><td>${esc(c.label)}</td><td>${esc(c.earth)}</td><td>${esc(c.moon)}</td><td>${esc(c.mars)}</td></tr>`).join('');
-  return `<h4>BODY VARIABLES <span class="dg-sub">change from place to place</span></h4>
-    <table class="metric-table data-grid"><thead><tr><th></th><th class="num">${here} (here)</th><th class="num">${there} (best match)</th></tr></thead><tbody>${rows}</tbody></table>
-    <p class="md-src">${here}: ${esc(VARIABLE_SOURCES[ref.body])}<br>${there}: ${esc(VARIABLE_SOURCES[r.target])}</p>
-    <h4>BODY CONSTANTS <span class="dg-sub">the same everywhere on each world</span></h4>
-    <table class="metric-table data-grid consts"><thead><tr><th></th><th>Earth</th><th>Moon</th><th>Mars</th></tr></thead><tbody>${consts}</tbody></table>
-    <p class="md-src">No Earth site can reproduce these. They are why every analog breaks down somewhere.</p>`;
+  const constant = BODY_CONSTANTS.map((c) => {
+    const id = `const:${c.label}`, on = sel === id;
+    return `<button class="dg-tile dg-btn const ${on ? 'selected' : ''}" data-item="${esc(id)}" data-cmp="0" aria-pressed="${on}" title="${esc(c.label)}">
+        <span class="dg-ico" aria-hidden="true">${CONST_ICON[c.label] || '•'}</span>
+        <span class="dg-lbl">${esc(SHORT_CONST[c.label] || c.label)}</span>
+        <span class="dg-pct"></span>
+        <span class="dg-v"><i>${here}</i>${esc(c[ref.body])}</span>
+        <span class="dg-v"><i>${there}</i>${esc(c[r.target])}</span>
+      </button>`;
+  }).join('');
+  return `${card}
+    <div class="dg-area"><div class="dg-area-head">VARIED <span>changes from place to place</span></div><div class="dg-tiles">${varied}</div></div>
+    <div class="dg-area"><div class="dg-area-head">CONSTANT <span>the same everywhere on each world</span></div><div class="dg-tiles">${constant}</div></div>`;
 }
 
 /**
@@ -342,7 +445,7 @@ export function renderMatchPanel(m, h) {
   const prev = m.targets[(idx - 1 + m.targets.length) % m.targets.length];
   const next = m.targets[(idx + 1) % m.targets.length];
   const sym = RAIL_BY[view];
-  const body = view === 'grid' ? gridView(ref, r, m.grids)
+  const body = view === 'grid' ? gridView(ref, r, m)
     : view === 'combo' ? comboDetail(ref, r, m.weights) : metricDetail(view, ref, r, m.stat);
   const adv = adviceFor(ref, r, m.stat);
   const list = (arr) => `<ul>${arr.map((x) => `<li>${esc(x)}</li>`).join('')}</ul>`;
@@ -382,5 +485,6 @@ export function renderMatchPanel(m, h) {
     s.addEventListener('change', () => h.onWeights(readWeights()));
   });
   el.querySelector('.cw-reset')?.addEventListener('click', h.onResetWeights);
+  el.querySelectorAll('.dg-btn').forEach((btn) => btn.addEventListener('click', () => h.onGridItem(btn.dataset.item, btn.dataset.cmp === '1')));
   el.classList.remove('hidden');
 }

@@ -136,6 +136,7 @@ const leftHandlers = {
     else switchBody(b);
   },
   onClear: () => { state.temp.ref = null; state.match.open = false; ui.showBriefing(null); refreshTemp(); },
+  onPickSite: (id) => { const s = byId[id]; if (s) selectSite(s); },   // mission-site picker (targets CSVs)
 };
 
 const advHandlers = {
@@ -162,6 +163,15 @@ const panelHandlers = {
   onTarget: (b) => { state.match.active = b; refreshTemp(); },
   onWeights: (w) => { state.match.weights = { ...w }; refreshTemp(); },
   onResetWeights: () => { state.match.weights = { ...match.DEFAULT_WEIGHTS }; refreshTemp(); },
+  // ▦ grid buttons: comparable variables switch the heat map; one-sided ones / constants just open their card
+  onGridItem: (id, comparable) => {
+    const m = state.match;
+    const again = m.selectedVar === id;
+    m.selectedVar = again ? null : id;
+    if (comparable) m.metric = again ? 'combo' : `var:${id}`;
+    else if (again && m.metric.startsWith('var:')) m.metric = 'combo';
+    refreshTemp();
+  },
   onGo: () => { const r = state.match.results[state.match.active]; if (r && r.best) goToSpot(r.target, r.best.lat, r.best.lon); },
   onClose: () => { state.panel = null; setRightOpen(false); },
   onBriefing: () => { const id = state.temp.ref && state.temp.ref.siteId; if (id) { state.match.open = false; selectSite(byId[id], { fly: false }); } },
@@ -184,7 +194,9 @@ function refreshTemp({ keepAdvanced = false } = {}) {
     onGoBest: () => { const r = m.results[m.active]; if (r && r.best) goToSpot(r.target, r.best.lat, r.best.lon); },
   });
   mui.renderLeft({ current: state.body, ref: t.ref, loading: t.loading, error: t.error, metric: m.metric,
-    results: m.results, online: state.online, stat: t.stat }, leftHandlers);
+    results: m.results, online: state.online, stat: t.stat, sites: missionSites(),
+    heat: Object.fromEntries(Object.keys(m.results).map((b) => [b, heatArray(b)])),
+    heatLabel: mui.heatLabel(m.metric) }, leftHandlers);
   if (!keepAdvanced) {
     mui.renderAdvanced({ stat: t.stat, range: t.range, opacity: t.opacity, gridLines: t.gridLines,
       scale: state.scale, ref: t.ref, weightsText: weightsText() }, advHandlers);
@@ -201,7 +213,8 @@ function renderPanel(force = false) {
   state.panel = 'match';
   mui.renderMatchPanel({ ref: t.ref, loading: t.loading, targets: t.ref ? targetsOf(t.ref) : [], active: m.active,
     result: t.ref ? m.results[m.active] : null, stat: t.stat, isSite: !!(t.ref && t.ref.siteId),
-    weights: m.weights || match.DEFAULT_WEIGHTS, grids: t.grids }, panelHandlers);
+    weights: m.weights || match.DEFAULT_WEIGHTS, grids: t.grids,
+    gridScores: t.ref ? gridScores() : {}, selectedVar: m.selectedVar || null, heatMetric: m.metric }, panelHandlers);
 }
 
 /* ---------------- collapsible side panels (both start collapsed) ---------------- */
@@ -238,7 +251,7 @@ function updateSideTabs() {
 /** Tap a rail symbol: open the right panel on that measurement's details (tap again to hide them). */
 function onRailMetric(k) {
   const showing = state.ui.right && state.panel === 'match' && (mui.getOpenMetric() || 'combo') === k;
-  if (mui.HEAT_KEYS.includes(k)) state.match.metric = k;          // globe + minimaps follow the symbol
+  if (mui.HEAT_KEYS.includes(k)) { state.match.metric = k; state.match.selectedVar = null; }   // globe + minimaps follow the symbol
   mui.setOpenMetric(showing && k === 'grid' ? null : k);
   clearProbe();
   if (state.panel === 'site') { ui.showBriefing(null); state.selectedId = null; }
@@ -249,13 +262,49 @@ function onRailMetric(k) {
 }
 
 /** Globe overlays: crosshair on your location's world; heat map + best-match pin on every other world. */
+/* ---------------- heat map source: a rail symbol (combo/temp/terrain/sunwind) or one grid variable ---------------- */
+const varCache = new Map();   // `${resultsKey}|${varId}|${body}` -> variableScores() result or null
+function variableResult(id, body) {
+  const t = state.temp, ref = t.ref;
+  if (!ref || body === ref.body) return null;
+  const key = `${state.match.key}|${id}|${body}`;
+  if (!varCache.has(key)) {
+    if (varCache.size > 200) varCache.clear();
+    varCache.set(key, match.variableScores(id, ref.body, match.cellIndex(ref.lat, ref.lon), t.grids[ref.body], body, t.grids[body], t.range));
+  }
+  return varCache.get(key);
+}
+/** The 0..1 array drawn for a world: the chosen variable's match, else the chosen symbol's. */
+function heatArray(body) {
+  const m = state.match, r = m.results[body];
+  if (!r) return null;
+  if (m.metric.startsWith('var:')) {
+    const v = variableResult(m.metric.slice(4), body);
+    return v ? v.scores : null;
+  }
+  return r[m.metric];
+}
+/** For the grid buttons: % at the best-match spot for every comparable variable, on the active world. */
+function gridScores() {
+  const m = state.match, r = m.results[m.active];
+  const out = {};
+  if (!r || !r.best) return out;
+  Object.keys(match.VAR_CMP).forEach((id) => {
+    const v = variableResult(id, m.active);
+    out[id] = v ? v.scores[r.best.i] : null;
+  });
+  return out;
+}
+
 function drawHeat() {
   const t = state.temp, m = state.match;
   const onRef = t.ref && t.ref.body === state.body;
-  globe.setReference(onRef ? { ...t.ref, label: t.ref.label.toUpperCase() } : null);
+  // a site marker already shows the name, so the crosshair only gets a label for plain clicked points
+  globe.setReference(onRef ? { ...t.ref, label: t.ref.siteId ? '' : t.ref.label.toUpperCase() } : null);
   const r = t.ref && !onRef ? m.results[state.body] : null;
   if (!r) { globe.setHeatmap(null); globe.setBestMatch(null); return; }
-  globe.setHeatmap(match.renderScoreCanvas(r[m.metric], { gridLines: t.gridLines }));
+  const heat = heatArray(state.body);
+  globe.setHeatmap(heat ? match.renderScoreCanvas(heat, { gridLines: t.gridLines }) : null);
   globe.setBestMatch(r.best ? { lat: r.best.lat, lon: r.best.lon,
     label: r.best.closestOnly ? `CLOSEST (${Math.round(r.best.gap)}°C APART)` : `BEST MATCH ${Math.round(r.best.overall * 100)}%` } : null);
 }
@@ -324,6 +373,55 @@ function tempReadout(pos) {
   const r = t.ref && t.ref.body !== state.body ? state.match.results[state.body] : null;
   if (r) text += ` · ${Math.round((r.overall[i] || 0) * 100)}% MATCH`;
   ui.updateTempReadout(text);
+}
+
+/* ---------------- Moon & Mars target sites (data/targets_*.csv) ---------------- */
+const TARGET_FILES = ['data/targets_moon.csv', 'data/targets_mars.csv'];
+const TARGET_TYPE = {
+  artemis_region: 'Artemis III candidate landing region', resource_region: 'Resource region (water / ice)',
+  human_landing_site: 'Crewed landing site', lander_site: 'Robotic lander site', rover_site: 'Rover site',
+  pit_or_cave: 'Pit or possible lava-tube entrance', science_region: 'Science target',
+};
+
+/** Turn the CSV rows into globe sites; existing hand-written entries keep their text and coordinates. */
+async function loadTargets() {
+  let added = 0;
+  for (const path of TARGET_FILES) {
+    try {
+      const res = await fetch(path);
+      if (!res.ok) throw new Error(`${path}: HTTP ${res.status}`);
+      for (const r of temp.parseCSV(await res.text())) {
+        if (!r.id || !r.body) continue;
+        const extra = {
+          targetType: r.target_type, group: r.group, mission: r.mission_or_program,
+          whyItMatters: r.why_it_matters, coordStatus: r.coord_status, csvSource: r.source_id,
+        };
+        if (byId[r.id]) { Object.assign(byId[r.id], extra); continue; }
+        const site = {
+          id: r.id, body: r.body, name: r.name,
+          region: r.mission_or_program || TARGET_TYPE[r.target_type] || '',
+          lat: Number(r.lat), lon: Number(r.lon),
+          environment: TARGET_TYPE[r.target_type] || r.target_type || '',
+          summary: r.why_it_matters || '',
+          analogs: [], scores: {},
+          datasets: r.further_reading ? [{ name: 'Further reading', url: r.further_reading }] : [],
+          ...extra,
+        };
+        SITES.push(site);
+        byId[site.id] = site;
+        added++;
+      }
+    } catch (err) {
+      console.warn('target sites not loaded:', err.message);
+    }
+  }
+  if (added) { refreshSites(); refreshTemp(); }
+}
+
+/** Mission sites for the left-panel picker, grouped by world. */
+function missionSites() {
+  return SITES.filter((s) => s.body !== 'earth')
+    .map((s) => ({ id: s.id, name: s.name, body: s.body, type: s.environment, artemis: s.group === 'artemis-iii' }));
 }
 
 async function loadGrids() {
@@ -625,6 +723,7 @@ async function init() {
   }, 600);
   loadLandMask().then(() => { landReady = true; refreshTemp(); warmUp(); });
   loadGrids();
+  loadTargets();
   dataTab.initDataTab({ grids: () => state.temp.grids });
   window.analogAtlas = { globe, state, SITES, setBody, switchBody, selectSite, probeAt, setTactical, setTempReference, setBodyReference }; // console debugging
 }
