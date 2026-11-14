@@ -18,9 +18,10 @@ const ROWS = 90, COLS = 180, RES = 2, N = ROWS * COLS;
 export const PRESS_DECADES = 3;   // 0% match at a 1000× pressure difference
 export const WEIGHTS = { real: { temp: 0.5, press: 0.25, terrain: 0.25 }, sampleTerrain: { temp: 0.65, press: 0.35, terrain: 0 } };
 export const MATCH_METRICS = {
+  combo: { label: 'COMBO', short: 'COMBO' },
   temp: { label: 'TEMPERATURE', short: 'TEMP' },
-  press: { label: 'PRESSURE', short: 'PRESS' },
   terrain: { label: 'TERRAIN', short: 'TERRAIN' },
+  sunwind: { label: 'SUN & WIND', short: 'SUN/WIND' },
 };
 
 const latOf = (i) => 90 - (Math.floor(i / COLS) + 0.5) * RES;
@@ -35,12 +36,53 @@ export function pressScore(a, b) {
   return clamp01(1 - Math.abs(Math.log10(a + 1) - Math.log10(b + 1)) / PRESS_DECADES);
 }
 
-/* ---------------- terrain (per body + scale, cached) ---------------- */
+/* ---------------- terrain ----------------
+ * REAL: the terrain-data team's 2° feature grids (terrain_data/out/*_features*.csv):
+ *   Earth: NOAA ETOPO 2022 slope, roughness, relief + impact-structure proximity
+ *   Moon:  NASA LRO LOLA + USGS Robbins craters     Mars: NASA MGS MOLA + USGS Robbins & Hynek craters
+ * Ranges and the cratering rule follow terrain_data/config/features.json, so this
+ * terrain score agrees with their scorer. FALLBACK (files missing): simulated values.
+ */
+export const TERRAIN_FEATURES = [
+  { key: 'slope', label: 'Slope', range: 6, unit: '°', digits: 1 },
+  { key: 'roughness', label: 'Roughness', range: 400, unit: ' m', digits: 0 },
+  { key: 'relief', label: 'Relief', range: 2500, unit: ' m', digits: 0 },
+  { key: 'crater', label: 'Cratering (0–1)', range: 0.6, unit: '', digits: 2 },
+];
+export const TERRAIN_FILES = {
+  earth: '../../terrain_data/out/earth_features_2deg.csv',
+  moon: '../../terrain_data/out/moon_features.csv',
+  mars: '../../terrain_data/out/mars_features.csv',
+};
+export const TERRAIN_RANGES_FILE = '../../terrain_data/out/feature_ranges.json';
+const realTerrain = {};   // body -> { slope, roughness, relief, crater: Float32Array }
+
+/** Load one body's feature CSV (rows are parsed objects from temperature.parseCSV). */
+export function registerTerrain(body, rows, ranges) {
+  const g = {};
+  TERRAIN_FEATURES.forEach((f) => { g[f.key] = new Float32Array(N).fill(NaN); });
+  const p99 = ranges && ranges.body_range_p99 && ranges.body_range_p99[body] && ranges.body_range_p99[body].crater_density_5km_n;
+  const num = (v) => (v === '' || v == null ? NaN : Number(v));
+  for (const r of rows) {
+    const i = cellIndex(Number(r.lat), Number(r.lon));
+    g.slope[i] = num(r.slope_mean_deg);
+    g.roughness[i] = num(r.roughness_m);
+    g.relief[i] = num(r.relief_m);
+    g.crater[i] = body === 'earth' ? num(r.crater_prox_idx)
+      : (p99 ? Math.min(1, num(r.crater_density_5km_n) / p99) : NaN);
+  }
+  realTerrain[body] = g;
+  storeFeatures(body, rows);
+  terrainCache.clear();
+}
+export const hasRealTerrain = (body) => !!realTerrain[body];
+
 const terrainCache = new Map();
 function terrainGrid(body, scale) {
+  if (realTerrain[body]) return { ...realTerrain[body], sim: false, keys: TERRAIN_FEATURES };
   const key = `${body}|${scale}`;
   if (terrainCache.has(key)) return terrainCache.get(key);
-  const g = { sim: false };
+  const g = { sim: false, keys: SIM_FEATURES(scale) };
   TERRAIN_KEYS.forEach((k) => { g[k] = new Float32Array(N).fill(NaN); });
   for (let i = 0; i < N; i++) {
     const m = measure(body, latOf(i), lonOf(i), scale, { fast: true });
@@ -50,53 +92,136 @@ function terrainGrid(body, scale) {
   terrainCache.set(key, g);
   return g;
 }
+const SIM_FEATURES = (scale) => [
+  { key: 'slope', label: 'Slope', range: rangeOf('slope', scale), unit: '°', digits: 1 },
+  { key: 'relief', label: 'Local relief', range: rangeOf('relief', scale), unit: ' m', digits: 0 },
+  { key: 'rocks', label: 'Rock cover', range: rangeOf('rocks', scale), unit: '%', digits: 0 },
+];
 export function clearTerrainCache() { terrainCache.clear(); }
 
-/** Terrain measurements at one point (full sampling) + whether they are simulated. */
+/** Terrain at one point: real grid cell when loaded, else the simulation. */
 export function terrainAt(body, lat, lon, scale) {
+  const g = realTerrain[body];
+  if (g) {
+    const i = cellIndex(lat, lon), t = { sim: false };
+    TERRAIN_FEATURES.forEach((f) => { t[f.key] = g[f.key][i]; });
+    return t;
+  }
   const m = measure(body, lat, lon, scale);
   return { slope: m.values.slope, relief: m.values.relief, rocks: m.values.rocks, sim: !!m.simulated.slope };
 }
 
-function terrainScore(ref, tg, i, scale) {
+function terrainScore(ref, tg, i) {
   let sum = 0, n = 0;
-  TERRAIN_KEYS.forEach((k) => {
-    const a = ref[k], b = tg[k][i];
-    if (a == null || Number.isNaN(b)) return;
-    sum += clamp01(1 - Math.abs(a - b) / rangeOf(k, scale)); n++;
+  tg.keys.forEach((f) => {
+    const a = ref[f.key], b = tg[f.key][i];
+    if (a == null || Number.isNaN(a) || Number.isNaN(b)) return;
+    sum += clamp01(1 - Math.abs(a - b) / f.range); n++;
   });
+  return n >= 2 ? sum / n : NaN;   // need at least two terrain measurements to call it a match
+}
+
+/* ---------------- all feature columns (for sun & wind + the data grid) ---------------- */
+const features = {};   // body -> { column: Float32Array(N) }
+export const featureAt = (body, col, i) => {
+  const a = features[body] && features[body][col];
+  return a ? a[i] : NaN;
+};
+function storeFeatures(body, rows) {
+  const f = {};
+  const cols = Object.keys(rows[0] || {}).filter((c) => !['body', 'lat', 'lon', 'source_id'].includes(c));
+  cols.forEach((c) => { f[c] = new Float32Array(N).fill(NaN); });
+  for (const r of rows) {
+    const i = cellIndex(Number(r.lat), Number(r.lon));
+    cols.forEach((c) => { if (r[c] !== '' && r[c] != null) { const v = Number(r[c]); if (!Number.isNaN(v)) f[c][i] = v; } });
+  }
+  features[body] = f;
+}
+
+/* ---------------- solar energy at the surface (W/m², yearly average) ----------------
+ * Earth: WorldClim 2.1 surface solar radiation (kJ/m²/day ÷ 86.4), land only.
+ * Moon:  computed from latitude (no air: surface = top of atmosphere), S = 1361 W/m², tilt 1.5°.
+ * Mars:  computed from latitude, S = 589 W/m², tilt 25.2°, × 0.65 for typical dust (estimate).
+ */
+const SOLAR = { moon: { S: 1361, tilt: 1.54, trans: 1 }, mars: { S: 589, tilt: 25.19, trans: 0.65 } };
+const insolCache = new Map();
+function insolationLat(body, latDeg) {
+  const key = `${body}|${latDeg}`;
+  if (insolCache.has(key)) return insolCache.get(key);
+  const { S, tilt, trans } = SOLAR[body];
+  const phi = (latDeg * Math.PI) / 180, eps = (tilt * Math.PI) / 180;
+  let sum = 0;
+  const n = 360;
+  for (let k = 0; k < n; k++) {
+    const dec = Math.asin(Math.sin(eps) * Math.sin((2 * Math.PI * k) / n));
+    const x = -Math.tan(phi) * Math.tan(dec);
+    const h0 = x >= 1 ? 0 : x <= -1 ? Math.PI : Math.acos(x);
+    sum += (S / Math.PI) * (h0 * Math.sin(phi) * Math.sin(dec) + Math.cos(phi) * Math.cos(dec) * Math.sin(h0));
+  }
+  const v = (sum / n) * trans;
+  insolCache.set(key, v);
+  return v;
+}
+export function solarAt(body, i) {
+  if (body === 'earth') { const s = featureAt('earth', 'srad_kj_m2_day', i); return Number.isNaN(s) ? NaN : s / 86.4; }
+  return SOLAR[body] ? insolationLat(body, latOf(i)) : NaN;
+}
+/** Wind speed (m/s): Earth WorldClim; Moon 0 (no air); Mars not in our data yet (NaN). */
+export function windAt(body, i) {
+  if (body === 'earth') return featureAt('earth', 'wind_ms', i);
+  return body === 'moon' ? 0 : NaN;
+}
+export const SOLAR_RANGE = 150;   // W/m² apart = 0%
+export const WIND_RANGE = 8;      // m/s apart = 0%
+
+function sunwindScore(refS, refW, body, i) {
+  let sum = 0, n = 0;
+  const s = solarAt(body, i);
+  if (!Number.isNaN(refS) && !Number.isNaN(s)) { sum += clamp01(1 - Math.abs(refS - s) / SOLAR_RANGE); n++; }
+  const w = windAt(body, i);
+  if (!Number.isNaN(refW) && !Number.isNaN(w)) { sum += clamp01(1 - Math.abs(refW - w) / WIND_RANGE); n++; }
   return n ? sum / n : NaN;
+}
+
+/** Extra reference values (sun & wind) for a clicked point. */
+export function refExtras(body, lat, lon) {
+  const i = cellIndex(lat, lon);
+  return { solar: solarAt(body, i), wind: windAt(body, i) };
 }
 
 /* ---------------- the match ---------------- */
 
+export const DEFAULT_WEIGHTS = { temp: 40, press: 20, terrain: 25, sunwind: 15 };
+
 /**
- * ref = { body, lat, lon, mean, high, low, pressure, terrain:{slope,relief,rocks,sim} }
- * grid = loaded grid of the target body (temperature.gridFromCSV)
- * Returns per-cell Float32Arrays for each metric + overall, and the best cell.
+ * ref = { body, lat, lon, mean, high, low, pressure, solar, wind, terrain:{...,sim} }
+ * grid = loaded temperature grid of the target body
+ * weights = combo slider weights (any scale; normalised over what is available per cell)
+ * Returns per-cell Float32Arrays: temp, press, terrain, sunwind, combo (= overall), and the best cell.
  */
-export function computeMatch(ref, grid, target, { stat, range, scale }) {
-  const temp = new Float32Array(N), press = new Float32Array(N), terrain = new Float32Array(N), overall = new Float32Array(N);
+export function computeMatch(ref, grid, target, { stat, range, scale, weights = DEFAULT_WEIGHTS }) {
+  const temp = new Float32Array(N), press = new Float32Array(N), terrain = new Float32Array(N);
+  const sunwind = new Float32Array(N), combo = new Float32Array(N);
   const tg = terrainGrid(target, scale);
   const terrainReal = !tg.sim && !ref.terrain.sim;
-  const w = terrainReal ? WEIGHTS.real : WEIGHTS.sampleTerrain;
+  const w = { ...weights, terrain: terrainReal ? weights.terrain : 0 };   // sample terrain never counts
   const pcol = grid.columns && grid.columns.pressure_pa;
   const target0 = ref[stat];
   for (let i = 0; i < N; i++) {
     const t = grid[stat][i];
     temp[i] = Number.isNaN(t) ? NaN : clamp01(1 - Math.abs(t - target0) / range);
     press[i] = pcol ? pressScore(ref.pressure, pcol[i]) : NaN;
-    terrain[i] = terrainScore(ref.terrain, tg, i, scale);
+    terrain[i] = terrainScore(ref.terrain, tg, i);
+    sunwind[i] = sunwindScore(ref.solar, ref.wind, target, i);
     let sum = 0, ws = 0;
-    [['temp', temp[i]], ['press', press[i]], ['terrain', terrain[i]]].forEach(([k, v]) => {
+    [['temp', temp[i]], ['press', press[i]], ['terrain', terrain[i]], ['sunwind', sunwind[i]]].forEach(([k, v]) => {
       if (!Number.isNaN(v) && w[k] > 0) { sum += v * w[k]; ws += w[k]; }
     });
-    overall[i] = ws ? sum / ws : NaN;
+    combo[i] = ws ? sum / ws : NaN;
   }
-  let best = bestCell(overall, target);
+  let best = bestCell(combo, target);
   if (best && best.overall <= 0.005) {
-    // Nothing scores above 0%: pin the CLOSEST cell instead (smallest temperature gap),
-    // so the marker still means something, and flag it as "closest", not a match.
+    // Nothing scores above 0%: pin the CLOSEST cell instead (smallest temperature gap)
     let bi = -1, bd = Infinity;
     for (let i = 0; i < N; i++) {
       const t = grid[stat][i];
@@ -104,18 +229,135 @@ export function computeMatch(ref, grid, target, { stat, range, scale }) {
       const d = Math.abs(t - target0);
       if (d < bd) { bd = d; bi = i; }
     }
-    if (bi >= 0) best = { i: bi, lat: latOf(bi), lon: lonOf(bi), overall: overall[bi], closestOnly: true, gap: bd };
+    if (bi >= 0) best = { i: bi, lat: latOf(bi), lon: lonOf(bi), overall: combo[bi], closestOnly: true, gap: bd };
   }
   if (best) {
     const i = best.i;
-    best.scores = { temp: temp[i], press: press[i], terrain: terrain[i] };
+    best.scores = { temp: temp[i], press: press[i], terrain: terrain[i], sunwind: sunwind[i], combo: combo[i] };
     best.values = {
       mean: grid.mean[i], high: grid.high[i], low: grid.low[i],
-      pressure: pcol ? pcol[i] : NaN, slope: tg.slope[i], relief: tg.relief[i], rocks: tg.rocks[i],
+      pressure: pcol ? pcol[i] : NaN,
+      solar: solarAt(target, i), wind: windAt(target, i),
+      slope: tg.slope ? tg.slope[i] : NaN,
+      terrain: Object.fromEntries(tg.keys.map((f) => [f.key, tg[f.key][i]])),
     };
+    best.terrainKeys = tg.keys;
   }
-  return { target, temp, press, terrain, overall, best, terrainSim: !terrainReal, weights: w };
+  return { target, temp, press, terrain, sunwind, combo, overall: combo, best, terrainSim: !terrainReal, weights: w };
 }
+
+/* ---------------- night lights (Earth remoteness) from the bundled NASA Black Marble image ---------------- */
+let nightLights = null;   // Float32Array(N), 0 = dark .. 1 = brightest city lights
+export function loadNightLights(url) {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => {
+      const c = document.createElement('canvas');
+      c.width = COLS * 2; c.height = ROWS * 2;
+      const g = c.getContext('2d');
+      g.drawImage(img, 0, 0, c.width, c.height);
+      const px = g.getImageData(0, 0, c.width, c.height).data;
+      const raw = new Float32Array(N);
+      for (let y = 0; y < c.height; y++) {
+        for (let x = 0; x < c.width; x++) {
+          const k = (y * c.width + x) * 4;
+          // city lights are warm (yellow/white-orange); ice is neutral white, sea is blue
+          const lit = Math.max(0, (px[k] + px[k + 1]) / 2 - px[k + 2]);
+          raw[Math.floor(y / 2) * COLS + Math.floor(x / 2)] += lit / 4;
+        }
+      }
+      let max = 0;
+      raw.forEach((v) => { if (v > max) max = v; });
+      nightLights = raw.map((v) => (max ? Math.min(1, (v / max) * 3) : 0));
+      resolve(true);
+    };
+    img.onerror = () => resolve(false);
+    img.src = url;
+  });
+}
+
+/* ---------------- body variables for the data grid (table rows 1-19) ---------------- */
+const NA = (text) => ({ v: NaN, text });
+const fx = (v, d, u) => (Number.isNaN(v) ? null : { v, text: `${v.toLocaleString(undefined, { maximumFractionDigits: d, minimumFractionDigits: d })}${u}` });
+const swingOf = (g, i) => g.high[i] - g.low[i];
+
+/** Rows: { id, label, group, get(body, i, grid) -> {v, text} } */
+export const VARIABLES = [
+  { id: 'temp_mean', group: 'Climate', label: 'Average surface temperature', get: (b, i, g) => fx(g.mean[i], 1, ' °C') || NA('—') },
+  { id: 'temp_high', group: 'Climate', label: 'Daily high', get: (b, i, g) => fx(g.high[i], 1, ' °C') || NA('—') },
+  { id: 'temp_low', group: 'Climate', label: 'Daily low', get: (b, i, g) => fx(g.low[i], 1, ' °C') || NA('—') },
+  { id: 'swing', group: 'Climate', label: 'Day–night swing', get: (b, i, g) => fx(swingOf(g, i), 1, ' °C') || NA('—') },
+  { id: 'pressure', group: 'Atmosphere', label: 'Surface pressure', get: (b, i, g) => {
+    const p = g.columns && g.columns.pressure_pa ? g.columns.pressure_pa[i] : NaN;
+    if (Number.isNaN(p)) return NA('—');
+    return p < 0.5 ? { v: 0, text: '0 Pa (vacuum)' } : fx(p >= 1000 ? p / 1000 : p, p >= 1000 ? 1 : 0, p >= 1000 ? ' kPa' : ' Pa');
+  } },
+  { id: 'vapour', group: 'Atmosphere', label: 'Water vapour (column)', get: (b, i, g) => {
+    const w = g.columns && g.columns.water_vapour_mm ? g.columns.water_vapour_mm[i] : NaN;
+    if (b === 'moon') return { v: 0, text: '0 (no air)' };
+    return fx(w, b === 'mars' ? 3 : 1, ' mm') || NA('—');
+  } },
+  { id: 'cloud', group: 'Atmosphere', label: 'Cloud cover', get: (b) => (b === 'moon' ? NA('none (no air)') : NA('not in our data yet')) },
+  { id: 'uv', group: 'Atmosphere', label: 'UV index', get: (b) => (b === 'earth' ? NA('not in our data yet') : NA('no global grid')) },
+  { id: 'solar', group: 'Sun & wind', label: 'Solar energy at surface', get: (b, i) => {
+    const s = solarAt(b, i);
+    if (Number.isNaN(s)) return NA(b === 'earth' ? 'sea (land only)' : '—');
+    return { v: s, text: `${Math.round(s)} W/m²${b === 'earth' ? '' : b === 'moon' ? ' (calc.)' : ' (calc., dusty)'}` };
+  } },
+  { id: 'wind', group: 'Sun & wind', label: 'Wind speed', get: (b, i) => (b === 'moon' ? { v: 0, text: '0 (no air)' }
+    : b === 'mars' ? NA('not in our data yet') : fx(windAt(b, i), 1, ' m/s') || NA('sea (land only)')) },
+  { id: 'dust', group: 'Sun & wind', label: 'Dust', get: (b, i) => (b === 'earth' ? (fx(featureAt('earth', 'dust_idx', i), 2, ' (index)') || NA('—'))
+    : b === 'mars' ? (fx(featureAt('mars', 'dust_cover_idx', i), 2, ' (surface cover)') || NA('—')) : NA('none in air (no atmosphere)')) },
+  { id: 'precip', group: 'Water', label: 'Precipitation', get: (b, i) => (b === 'earth' ? (fx(featureAt('earth', 'precip_mm_yr', i), 0, ' mm/yr') || NA('sea (land only)')) : { v: 0, text: '0 (no rain)' }) },
+  { id: 'soil', group: 'Water', label: 'Soil wetness', get: (b) => (b === 'earth' ? NA('not in our data yet') : { v: 0, text: '≈0 (dry)' }) },
+  { id: 'ice', group: 'Water', label: 'Water ice / hydrogen', get: (b, i) => {
+    if (b === 'earth') return NA('not applicable');
+    if (b === 'mars') { const h = featureAt('mars', 'weh_pct', i); return Number.isNaN(h) ? (fx(featureAt('mars', 'water_idx', i), 2, ' (index)') || NA('—')) : fx(h, 1, ' % water-equiv. H'); }
+    const w = fx(featureAt('moon', 'water_idx', i), 2, ' (index, est.)');
+    return w || NA('—');
+  } },
+  { id: 'elevation', group: 'Terrain', label: 'Elevation', get: (b, i) => fx(featureAt(b, b === 'earth' ? 'elev_mean_m' : 'elevation_m', i), 0, ' m') || NA(b === 'earth' ? 'sea (land only)' : '—') },
+  { id: 'slope', group: 'Terrain', label: 'Slope', get: (b, i) => fx(featureAt(b, 'slope_mean_deg', i), 1, '°') || NA(b === 'earth' ? 'sea (land only)' : '—') },
+  { id: 'roughness', group: 'Terrain', label: 'Roughness', get: (b, i) => fx(featureAt(b, 'roughness_m', i), 0, ' m') || NA('—') },
+  { id: 'relief', group: 'Terrain', label: 'Relief', get: (b, i) => fx(featureAt(b, 'relief_m', i), 0, ' m') || NA('—') },
+  { id: 'inertia', group: 'Terrain', label: 'Thermal inertia (dust ↔ rock)', get: (b, i) => (b === 'mars' ? (fx(featureAt('mars', 'thermal_inertia_tiu', i), 0, ' TIU') || NA('—'))
+    : b === 'moon' ? NA('not in our data yet') : NA('not applicable')) },
+  { id: 'rocks', group: 'Terrain', label: 'Rock abundance', get: (b) => (b === 'earth' ? NA('not applicable') : NA('not in our data yet')) },
+  { id: 'earthvis', group: 'Operations', label: 'Earth visible (radio contact)', get: (b, i) => {
+    if (b !== 'moon') return NA('not applicable');
+    const lon = Math.abs(lonOf(i));
+    return lon <= 82 ? { v: 1, text: 'Always (near side)' } : lon <= 98 ? { v: 0.5, text: 'Sometimes (libration zone)' } : { v: 0, text: 'Never (far side): needs a relay' };
+  } },
+  { id: 'co2frost', group: 'Operations', label: 'Seasonal CO₂ frost', get: (b, i, g) => {
+    if (b !== 'mars') return NA('not applicable');
+    const lo = g.low[i];
+    return Number.isNaN(lo) ? NA('—') : lo <= -120 ? { v: 1, text: 'Likely in winter (est.)' } : { v: 0, text: 'Unlikely (est.)' };
+  } },
+  { id: 'lights', group: 'Operations', label: 'Night lights (remoteness)', get: (b, i) => {
+    if (b !== 'earth') return NA('not applicable');
+    if (!nightLights) return NA('loading…');
+    const v = nightLights[i];
+    return { v, text: v < 0.05 ? 'Dark (remote)' : v < 0.3 ? `Dim (${v.toFixed(2)})` : `Bright (${v.toFixed(2)})` };
+  } },
+];
+
+export const VARIABLE_SOURCES = {
+  earth: 'NASA POWER (temperature, pressure, water vapour) · WorldClim 2.1 (solar, wind, rain) · NOAA ETOPO 2022 (terrain) · NASA Black Marble (night lights)',
+  moon: 'LRO Diviner (temperature) · LRO LOLA (terrain) · Lunar Prospector (composition) · solar & Earth visibility calculated from position · ice index is a latitude-based estimate',
+  mars: 'Mars Climate Database 6.2 (temperature, pressure, vapour) · MGS MOLA (terrain) · MGS TES (thermal inertia, dust) · Mars Odyssey GRS (hydrogen) · solar calculated',
+};
+
+/** Whole-body constants (no single place can change these). */
+export const BODY_CONSTANTS = [
+  { label: 'Gravity', earth: '1 g (9.8 m/s²)', moon: '0.17 g', mars: '0.38 g' },
+  { label: 'Atmosphere', earth: 'Thick N₂/O₂, breathable', moon: 'None (vacuum)', mars: 'Thin CO₂ (~0.6% of Earth)' },
+  { label: 'Day length', earth: '24 h', moon: '29.5 Earth days', mars: '24 h 40 min' },
+  { label: 'Solar wind at the surface', earth: 'Blocked by the magnetic field', moon: 'Hits the ground directly', mars: 'No global magnetic field; thin air gives little protection' },
+  { label: 'Magnetic field', earth: 'Strong, global', moon: 'None (weak local patches)', mars: 'None global (crustal patches)' },
+  { label: 'Radiation dose (surface, approx.)', earth: '~0.007 mSv/day', moon: '~1.4 mSv/day (Chang’e-4)', mars: '~0.7 mSv/day (Curiosity RAD)' },
+  { label: 'Sunlight strength (top of air)', earth: '1361 W/m²', moon: '1361 W/m²', mars: '~590 W/m²' },
+  { label: 'Escape velocity', earth: '11.2 km/s', moon: '2.4 km/s', mars: '5.0 km/s' },
+];
 
 /** Highest overall score (land only on Earth); ties broken by the best-matching 3×3 neighbourhood. */
 function bestCell(arr, target) {

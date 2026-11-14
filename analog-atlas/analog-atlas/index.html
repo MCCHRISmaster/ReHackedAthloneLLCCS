@@ -22,7 +22,6 @@
       <span class="brand-mark" aria-hidden="true">◆</span>
       <div>
         <div class="brand-title">PLANETARY COMPARATOR</div>
-        <div class="brand-sub">EARTH · MOON · MARS ANALOG FINDER · NASA DATA</div>
       </div>
     </div>
     <div class="top-center">
@@ -49,11 +48,21 @@
     <span class="side-arrow" aria-hidden="true">▸</span><span class="side-label">COMPARE WORLDS</span>
   </button>
   <!-- Right-edge rail: MATCH tab + temperature / pressure / terrain symbols (always visible) -->
-  <div class="right-rail" id="right-rail">
-    <button class="side-tab right" id="tab-right" aria-expanded="false" aria-controls="site-detail" title="Show or hide the match details">
-      <span class="side-arrow" aria-hidden="true">◂</span><span class="side-label">MATCH</span><span class="side-badge" id="tab-right-badge"></span>
-    </button>
-    <div class="rail-metrics" id="rail-metrics" role="group" aria-label="Match by measurement"></div>
+  <!-- Right edge: rail (top) and globe controls (bottom) share one column, so they never overlap -->
+  <div class="right-column" id="right-column">
+    <div class="right-rail" id="right-rail">
+      <button class="side-tab right" id="tab-right" aria-expanded="false" aria-controls="site-detail" title="Show or hide the match details">
+        <span class="side-arrow" aria-hidden="true">◂</span><span class="side-label">MATCH</span><span class="side-badge" id="tab-right-badge"></span>
+      </button>
+      <div class="rail-metrics" id="rail-metrics" role="group" aria-label="Match by measurement"></div>
+    </div>
+    <div class="hud-controls" role="toolbar" aria-label="Globe controls">
+      <button class="ctl" id="btn-zoom-in" title="Zoom in (+)">＋</button>
+      <button class="ctl" id="btn-zoom-out" title="Zoom out (−)">－</button>
+      <button class="ctl" id="btn-rotate" title="Toggle auto-rotate (R)" aria-pressed="true">⟳</button>
+      <button class="ctl" id="btn-reset" title="Reset view (H)">⌂</button>
+      <button class="ctl" id="btn-help" title="How to explore (?)">?</button>
+    </div>
   </div>
 
   <div class="left-col" id="left-col">
@@ -94,13 +103,6 @@
 
   <aside class="hud-right panel hidden" id="site-detail" aria-live="polite"></aside>
 
-  <div class="hud-controls" role="toolbar" aria-label="Globe controls">
-    <button class="ctl" id="btn-zoom-in" title="Zoom in (+)">＋</button>
-    <button class="ctl" id="btn-zoom-out" title="Zoom out (−)">－</button>
-    <button class="ctl" id="btn-rotate" title="Toggle auto-rotate (R)" aria-pressed="true">⟳</button>
-    <button class="ctl" id="btn-reset" title="Reset view (H)">⌂</button>
-    <button class="ctl" id="btn-help" title="How to explore (?)">?</button>
-  </div>
 
   <div class="help-card panel hidden" id="help-card" role="dialog" aria-labelledby="help-title"></div>
 

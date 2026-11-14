@@ -33,7 +33,7 @@ const state = {
     grids: {},            // body -> grid from CSV
     gridError: null,
   },
-  match: { metric: 'temp', active: null, results: {}, key: '', open: false }, // location match HUD
+  match: { metric: 'combo', active: null, results: {}, key: '', open: false, weights: null }, // location match HUD
   ui: { left: false, right: false },   // side panels: both start collapsed
   probe: null,            // { lat, lon } of the probed point
   probeResult: null,
@@ -102,6 +102,8 @@ function syncPlanetLooks() {
 
 const targetsOf = (ref) => Object.keys(BODIES).filter((b) => BODIES[b].enabled && b !== ref.body);
 let landReady = false;
+let switchToken = 0;
+let terrainVersion = 0;
 
 function weightsText() {
   const anyReal = Object.values(state.match.results).some((r) => !r.terrainSim);
@@ -113,13 +115,14 @@ function weightsText() {
 function computeResults() {
   const t = state.temp, m = state.match;
   if (!t.ref) { m.results = {}; m.key = ''; return; }
-  const key = [t.ref.body, t.ref.lat, t.ref.lon, t.stat, t.range, state.scale, Object.keys(t.grids).join(','), landReady].join('|');
+  m.weights ||= { ...match.DEFAULT_WEIGHTS };
+  const key = [t.ref.body, t.ref.lat, t.ref.lon, t.stat, t.range, state.scale, Object.keys(t.grids).join(','), landReady, terrainVersion, JSON.stringify(m.weights)].join('|');
   if (key === m.key) return;
   m.key = key;
   m.results = {};
   targetsOf(t.ref).forEach((b) => {
     const g = t.grids[b];
-    if (g) m.results[b] = match.computeMatch(t.ref, g, b, { stat: t.stat, range: t.range, scale: state.scale });
+    if (g) m.results[b] = match.computeMatch(t.ref, g, b, { stat: t.stat, range: t.range, scale: state.scale, weights: m.weights });
   });
   if (!m.active || !m.results[m.active]) m.active = targetsOf(t.ref)[0];
 }
@@ -156,7 +159,9 @@ const advHandlers = {
 };
 
 const panelHandlers = {
-  onTarget: (b) => { state.match.active = b; renderPanel(); },
+  onTarget: (b) => { state.match.active = b; refreshTemp(); },
+  onWeights: (w) => { state.match.weights = { ...w }; refreshTemp(); },
+  onResetWeights: () => { state.match.weights = { ...match.DEFAULT_WEIGHTS }; refreshTemp(); },
   onGo: () => { const r = state.match.results[state.match.active]; if (r && r.best) goToSpot(r.target, r.best.lat, r.best.lon); },
   onClose: () => { state.panel = null; setRightOpen(false); },
   onBriefing: () => { const id = state.temp.ref && state.temp.ref.siteId; if (id) { state.match.open = false; selectSite(byId[id], { fly: false }); } },
@@ -173,8 +178,10 @@ function refreshTemp({ keepAdvanced = false } = {}) {
   computeResults();
   const t = state.temp, m = state.match;
   const targets = t.ref ? targetsOf(t.ref) : [];
-  mui.renderMatchBar({ ref: t.ref, loading: t.loading, targets, results: m.results }, {
+  mui.renderMatchBar({ ref: t.ref, loading: t.loading, targets, results: m.results, active: m.active }, {
     onPick: (b) => { m.active = b; clearProbe(); state.panel = null; setRightOpen(true); },
+    onGoRef: () => { if (t.ref) goToSpot(t.ref.body, t.ref.lat, t.ref.lon); },
+    onGoBest: () => { const r = m.results[m.active]; if (r && r.best) goToSpot(r.target, r.best.lat, r.best.lon); },
   });
   mui.renderLeft({ current: state.body, ref: t.ref, loading: t.loading, error: t.error, metric: m.metric,
     results: m.results, online: state.online, stat: t.stat }, leftHandlers);
@@ -193,7 +200,8 @@ function renderPanel(force = false) {
   if (!force && (state.panel === 'site' || state.panel === 'probe')) return;
   state.panel = 'match';
   mui.renderMatchPanel({ ref: t.ref, loading: t.loading, targets: t.ref ? targetsOf(t.ref) : [], active: m.active,
-    result: t.ref ? m.results[m.active] : null, stat: t.stat, isSite: !!(t.ref && t.ref.siteId) }, panelHandlers);
+    result: t.ref ? m.results[m.active] : null, stat: t.stat, isSite: !!(t.ref && t.ref.siteId),
+    weights: m.weights || match.DEFAULT_WEIGHTS, grids: t.grids }, panelHandlers);
 }
 
 /* ---------------- collapsible side panels (both start collapsed) ---------------- */
@@ -224,18 +232,20 @@ function updateSideTabs() {
   badge.textContent = state.temp.ref && best >= 0 ? `${Math.round(best * 100)}%` : '';
   r.classList.toggle('has-result', !!badge.textContent);
   // 🌡️ ⏲️ ⛰️ rail: scores for the world currently shown in the match panel
-  mui.renderRail(state.temp.ref ? state.match.results[state.match.active] : null, { onMetric: onRailMetric });
+  mui.renderRail(state.temp.ref ? state.match.results[state.match.active] : null, { onMetric: onRailMetric, heat: state.match.metric });
 }
 
 /** Tap a rail symbol: open the right panel on that measurement's details (tap again to hide them). */
 function onRailMetric(k) {
-  const showing = state.ui.right && state.panel === 'match' && mui.getOpenMetric() === k;
-  mui.setOpenMetric(showing ? null : k);
+  const showing = state.ui.right && state.panel === 'match' && (mui.getOpenMetric() || 'combo') === k;
+  if (mui.HEAT_KEYS.includes(k)) state.match.metric = k;          // globe + minimaps follow the symbol
+  mui.setOpenMetric(showing && k === 'grid' ? null : k);
   clearProbe();
-  if (state.panel === 'site') { state.panel = null; ui.showBriefing(null); state.selectedId = null; }
+  if (state.panel === 'site') { ui.showBriefing(null); state.selectedId = null; }
   state.panel = null;
+  if (showing && k === 'grid') { refreshTemp(); return; }
   setRightOpen(true);
-  renderPanel(true);
+  refreshTemp();
 }
 
 /** Globe overlays: crosshair on your location's world; heat map + best-match pin on every other world. */
@@ -271,13 +281,13 @@ async function setTempReference(lat, lon, label, siteId = null) {
     const v = await temp.fetchEarthTemps(lat, lon);
     if (token !== refToken) return;   // a newer click won
     if (Number.isNaN(v.pressure)) v.pressure = gridPressure('earth', lat, lon);
-    t.ref = { body: 'earth', lat, lon, label: label || 'Selected point', siteId, ...v };
+    t.ref = { body: 'earth', lat, lon, label: label || 'Selected point', siteId, ...v, ...match.refExtras('earth', lat, lon) };
   } catch (err) {
     if (token !== refToken) return;
     // NASA POWER unreachable: fall back to the 2° Earth grid cell (same POWER climatology, cell average)
     const g = t.grids.earth, v = g && temp.cellTemps(g, lat, lon);
     if (v && !Number.isNaN(v.mean)) {
-      t.ref = { body: 'earth', lat, lon, label: `${label || 'Selected point'} (2° grid)`, siteId, ...v, pressure: gridPressure('earth', lat, lon) };
+      t.ref = { body: 'earth', lat, lon, label: `${label || 'Selected point'} (2° grid)`, siteId, ...v, pressure: gridPressure('earth', lat, lon), ...match.refExtras('earth', lat, lon) };
     } else t.error = `Couldn't get temperature: ${err.message}`;
   }
   if (t.ref && t.ref.body === 'earth' && t.ref.lat === lat && t.ref.lon === lon) t.ref.terrain = match.terrainAt('earth', lat, lon, state.scale);
@@ -297,7 +307,7 @@ function setBodyReference(bodyId, lat, lon, label, siteId = null) {
   } else {
     t.error = null;
     t.ref = { body: bodyId, lat, lon, label: label || `${bodyId === 'moon' ? 'Moon' : 'Mars'} point`, siteId, ...v,
-      pressure: gridPressure(bodyId, lat, lon), terrain: match.terrainAt(bodyId, lat, lon, state.scale) };
+      pressure: gridPressure(bodyId, lat, lon), terrain: match.terrainAt(bodyId, lat, lon, state.scale), ...match.refExtras(bodyId, lat, lon) };
   }
   refreshTemp();
 }
@@ -326,6 +336,29 @@ async function loadGrids() {
     }
   }
   refreshTemp();
+  loadTerrain();
+}
+
+/** Real terrain (slope, roughness, relief, cratering) from the terrain-data team's 2° feature grids. */
+async function loadTerrain() {
+  let ranges = null;
+  try { ranges = await (await fetch(match.TERRAIN_RANGES_FILE)).json(); } catch (err) { console.warn('terrain ranges', err); }
+  for (const [body, path] of Object.entries(match.TERRAIN_FILES)) {
+    try {
+      const res = await fetch(path);
+      if (!res.ok) throw new Error(`${path}: HTTP ${res.status}`);
+      match.registerTerrain(body, temp.parseCSV(await res.text()), ranges);
+    } catch (err) {
+      console.warn('terrain data not loaded, using sample values:', err.message);
+    }
+  }
+  // re-measure the current location's terrain with the real data and rescore everything
+  const r = state.temp.ref;
+  if (r) Object.assign(r, { terrain: match.terrainAt(r.body, r.lat, r.lon, state.scale) }, match.refExtras(r.body, r.lat, r.lon));
+  terrainVersion++;
+  match.loadNightLights('lib/images/dnb_land_ocean_ice_2012.png').then(() => { if (state.ui.right) renderPanel(true); });
+  state.match.key = '';
+  refreshTemp();
 }
 
 /** Instant body change (no animation). `after` runs once the new globe is up. */
@@ -343,7 +376,7 @@ function setBody(bodyId, after = null) {
   refreshImagery();
   refreshSites();
   refreshTemp();
-  ui.setStatus(`${state.online ? 'UPLINK ESTABLISHED' : 'OFFLINE MODE'} · ${BODIES[bodyId].label}`, state.online ? 'ready' : 'warn');
+  ui.setStatus(state.online ? 'LIVE' : 'OFFLINE', state.online ? 'ready' : 'warn');
   if (after) setTimeout(after, 250);
   else { globe.setAutoRotate(true); setRotateButton(true); }
 }
@@ -353,6 +386,14 @@ function switchBody(bodyId, after = null) {
   if (bodyId === state.body) { if (after) after(); return; }
   if (state.switching) return;
   state.switching = true;
+  // Safety net: if the switch animation stalls (e.g. the browser pauses animation frames),
+  // finish the switch directly after 8 s so planet switching never locks up.
+  const token = (switchToken = (switchToken || 0) + 1);
+  setTimeout(() => {
+    if (!state.switching || token !== switchToken) return;
+    if (state.body !== bodyId) setBody(bodyId, after);
+    state.switching = false;
+  }, 8000);
   ui.renderBodyTabs(bodyId, (id) => switchBody(id)); // label updates straight away
   // First ease the real globe back to the overview (if zoomed in or tilted), so the stand-in
   // planet can take over at exactly the same size and nothing jumps.

@@ -738,3 +738,78 @@ body:not(.right-collapsed) .hud-right ~ .hud-controls { right: 426px; bottom: 12
 /* move the rail and edge tabs instantly (a sliding transition could get stuck mid-way) */
 .right-rail { transition: none; }
 .side-tab { transition: background .15s, border-color .15s, color .15s; }
+
+/* ================= Layout v3: right column, bigger match bar, cleaner carousel ================= */
+
+/* right edge: rail on top, globe controls at the bottom, flush to the screen edge, never overlapping */
+.right-column {
+  position: fixed; top: 112px; bottom: 56px; right: 0; z-index: 6;
+  display: flex; flex-direction: column; align-items: flex-end; gap: 10px; pointer-events: none;
+}
+.right-column > * { pointer-events: auto; }
+body:not(.right-collapsed) .right-column { right: 360px; }
+.right-column .right-rail { position: static !important; top: auto; right: auto !important; flex: 0 1 auto; min-height: 0; overflow-y: auto; overflow-x: hidden; scrollbar-width: none; }
+.right-column .right-rail::-webkit-scrollbar { display: none; }
+.right-column .hud-controls { position: static !important; right: auto !important; bottom: auto !important; margin-top: auto; flex: 0 0 auto; }
+.right-column .hud-controls .ctl { border-right: 0; }
+@media (max-width: 820px) { body:not(.right-collapsed) .right-column { right: calc(100vw - 58px); } }
+
+/* bigger LOCATION MATCH bar + go-to buttons */
+.match-bar { padding: 9px 14px; gap: 10px; }
+.mb-title { font-size: 18px; letter-spacing: 0.22em; }
+.mb-hint { font-size: 15px; }
+.mb-chip { padding: 4px 12px; }
+.mb-chip.active { border-color: var(--accent); box-shadow: inset 0 -2px 0 var(--accent); }
+.mb-body { font-size: 12px; }
+.mb-pct { font-size: 26px; }
+.mb-sep { width: 1px; align-self: stretch; background: var(--panel-edge); margin: 0 2px; }
+.mb-go {
+  font-family: var(--font-ui); font-weight: 700; font-size: 13px; letter-spacing: 0.1em; cursor: pointer; white-space: nowrap;
+  padding: 7px 10px; background: rgba(255,255,255,0.04); border: 1px solid var(--panel-edge); color: var(--text);
+}
+.mb-go:hover:not(:disabled) { background: var(--accent); color: #000; border-color: var(--accent); }
+.mb-go:disabled { opacity: 0.4; cursor: not-allowed; }
+@media (max-width: 1100px) { .mb-go { font-size: 11px; padding: 6px 7px; } .mb-pct { font-size: 22px; } }
+
+/* bottom-centre planet selector: just the name (bigger) and the arrows */
+.planet-select .ps-kicker, .planet-select .ps-pips { display: none !important; }
+.planet-select .ps-name { font-size: 32px; letter-spacing: 0.32em; }
+
+/* rail: data-grid symbol */
+.rail-metric.grid .rail-icon { font-size: 26px; line-height: 1; color: var(--accent); }
+.mt-score { font-family: var(--font-mono); margin-left: 6px; }
+
+/* left panel: which map is showing */
+.ml-showing { font-size: 12px; color: var(--muted); }
+.ml-showing b { color: var(--text); letter-spacing: 0.06em; }
+.ml-showing span { font-size: 11px; }
+
+/* combo weight sliders */
+.cw-list { display: flex; flex-direction: column; gap: 10px; margin: 8px 0; }
+.cw-top { display: flex; justify-content: space-between; font-size: 13px; }
+.cw-top b { font-family: var(--font-mono); }
+.cw-row input[type=range] { width: 100%; accent-color: var(--accent); margin: 4px 0 0; }
+.cw-share { font-family: var(--font-mono); font-size: 10px; color: var(--muted); }
+.cw-reset { margin-top: 2px; }
+
+/* data grid */
+.data-grid td.na { color: var(--muted); font-style: italic; font-size: 11px; }
+.data-grid .dg-group td { font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.14em; color: var(--accent); padding-top: 10px; border-bottom: 1px solid var(--panel-edge); }
+.data-grid.consts td { font-size: 12px; vertical-align: top; }
+.dg-sub { font-family: var(--font-ui); font-weight: 400; letter-spacing: 0.02em; color: var(--muted); font-size: 11px; margin-left: 6px; }
+
+/* right column on shorter screens: everything stays visible and nothing overlaps */
+@media (max-height: 820px) {
+  .right-column { top: 104px; gap: 8px; }
+  .right-column .side-tab.right { writing-mode: horizontal-tb; padding: 6px 4px; gap: 4px; flex-direction: column; letter-spacing: 0.1em; font-size: 10px; }
+  .right-column .side-tab.right .side-label { font-size: 10px; }
+  .rail-metric { padding: 4px 2px; }
+  .rail-icon { font-size: 18px; }
+  .rail-pct { font-size: 11px; }
+  .right-column .hud-controls { gap: 5px; }
+  .right-column .hud-controls .ctl { width: 36px; height: 34px; font-size: 17px; }
+}
+@media (max-height: 700px) {
+  .rail-name { display: none; }
+  .right-column .hud-controls { display: grid; grid-template-columns: repeat(2, 36px); direction: rtl; }
+}

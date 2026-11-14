@@ -1,15 +1,18 @@
 /**
- * Location-match HUD (whiteboard layout):
- *   top centre   LOCATION MATCH bar: overall % for each other world
- *   left         compare chips + minimap cards of the OTHER worlds (heat map + best pin)
+ * Location-match HUD:
+ *   top centre   LOCATION MATCH bar: overall (combo) % per other world + go-to buttons
+ *   left         minimap cards of the OTHER worlds (heat map of the chosen symbol + best pin)
  *   bottom left  ADVANCED options
- *   right        match card for one target world (◁ ▷), simple scores, Here vs There,
- *                rover and human development sections
+ *   right rail   🎛️ combo · 🌡️ temperature · ⛰️ terrain · ☀️ sun & wind · ▦ data grid
+ *   right panel  details for the chosen symbol, rover and human development
  * Pure DOM; main.js passes in state + results from match.js.
  */
 import { BODIES } from './config.js';
 import { mapHTML, mapXY } from './planet-art.js';
-import { MATCH_METRICS, renderScoreCanvas } from './match.js';
+import {
+  MATCH_METRICS, renderScoreCanvas, VARIABLES, VARIABLE_SOURCES, BODY_CONSTANTS,
+  cellIndex, SOLAR_RANGE, WIND_RANGE, PRESS_DECADES,
+} from './match.js';
 import { matchColor } from './temperature.js';
 
 const $ = (id) => document.getElementById(id);
@@ -27,9 +30,37 @@ export function fmtP(v) {
 const STAT_LABEL = { mean: 'AVG', high: 'HIGH', low: 'LOW' };
 const scoreClass = (v) => (Number.isNaN(v) ? '' : v >= 0.75 ? 'good' : v >= 0.4 ? 'mid' : 'poor');
 
+/** rgba() tint for a 0..1 score on the red→green ramp. */
+function tint(s, a) {
+  if (s == null || Number.isNaN(s)) return `rgba(255,255,255,${a * 0.4})`;
+  const [r, g, b] = matchColor(s);
+  return `rgba(${r},${g},${b},${a})`;
+}
+
+/* ---------------- symbols ---------------- */
+export const RAIL = [
+  { key: 'combo', icon: '🎛️', name: 'Combo', short: 'COMBO' },
+  { key: 'temp', icon: '🌡️', name: 'Temperature', short: 'TEMP' },
+  { key: 'terrain', icon: '⛰️', name: 'Terrain', short: 'TERRAIN' },
+  { key: 'sunwind', icon: '☀️', name: 'Sun & wind', short: 'SUN·WIND' },
+  { key: 'grid', icon: '▦', name: 'Data grid', short: 'DATA' },
+];
+const RAIL_BY = Object.fromEntries(RAIL.map((r) => [r.key, r]));
+export const HEAT_KEYS = ['combo', 'temp', 'terrain', 'sunwind'];
+const WEIGHT_PARTS = [
+  { key: 'temp', label: '🌡️ Temperature' },
+  { key: 'press', label: '⏲️ Pressure' },
+  { key: 'terrain', label: '⛰️ Terrain' },
+  { key: 'sunwind', label: '☀️ Sun & wind' },
+];
+
+let openView = null;   // which symbol's details the right panel shows
+export const getOpenMetric = () => openView;
+export function setOpenMetric(k) { openView = k; }
+
 /* ---------------- top centre ---------------- */
 
-export function renderMatchBar(m, { onPick }) {
+export function renderMatchBar(m, { onPick, onGoRef, onGoBest }) {
   const el = $('match-bar');
   if (!m.ref && !m.loading) {
     el.innerHTML = '<span class="mb-title">LOCATION MATCH</span><span class="mb-hint">Click any location to compare worlds</span>';
@@ -38,18 +69,23 @@ export function renderMatchBar(m, { onPick }) {
   const chips = m.targets.map((t) => {
     const r = m.results[t];
     const v = r && r.best ? r.best.overall : NaN;
-    return `<button class="mb-chip ${scoreClass(v)}" data-target="${t}" title="Open the ${name(t)} match">
+    return `<button class="mb-chip ${scoreClass(v)} ${t === m.active ? 'active' : ''}" data-target="${t}" title="Open the ${name(t)} match">
         <span class="mb-body">${BODIES[t].label}</span><span class="mb-pct">${m.loading ? '…' : pct(v)}</span></button>`;
   }).join('');
-  el.innerHTML = `<span class="mb-title">LOCATION MATCH</span>${chips}`;
+  el.innerHTML = `<span class="mb-title">LOCATION MATCH</span>${chips}
+    <span class="mb-sep"></span>
+    <button class="mb-go" id="mb-go-ref" title="Fly to your chosen location" ${m.ref ? '' : 'disabled'}>📍 MY LOCATION</button>
+    <button class="mb-go" id="mb-go-best" title="Fly to the best match on ${m.active ? name(m.active) : 'the selected world'}" ${m.ref ? '' : 'disabled'}>🎯 BEST MATCH</button>`;
   el.querySelectorAll('[data-target]').forEach((b) => b.addEventListener('click', () => onPick(b.dataset.target)));
+  el.querySelector('#mb-go-ref').addEventListener('click', onGoRef);
+  el.querySelector('#mb-go-best').addEventListener('click', onGoBest);
 }
 
 /* ---------------- left column ---------------- */
 
 /**
- * m = { current, ref, loading, error, metric, results, online, refBody, gridsReady }
- * h = { onMetric(key), onPickMap(body), onClear() }
+ * m = { current, ref, loading, error, metric, results, online, stat }
+ * h = { onPickMap(body), onClear() }
  */
 export function renderLeft(m, h) {
   const el = $('match-left');
@@ -67,8 +103,8 @@ export function renderLeft(m, h) {
         <button class="ml-clear" aria-label="Clear location" title="Clear location">✕</button>
       </div>`;
   }
-  const chips = Object.entries(MATCH_METRICS).map(([k, d]) =>
-    `<button class="chip" data-metric="${k}" aria-pressed="${k === m.metric}">${d.label}</button>`).join('');
+  const sym = RAIL_BY[m.metric];
+  const showing = `<div class="ml-showing">Maps show: <b>${sym.icon} ${sym.name.toUpperCase()}</b> <span>(change with the symbols on the right)</span></div>`;
 
   const others = Object.keys(BODIES).filter((b) => BODIES[b].enabled && b !== m.current);
   const cards = others.map((b) => {
@@ -82,16 +118,17 @@ export function renderLeft(m, h) {
     } else if (r && r.best) {
       const p = mapXY(r.best.lat, r.best.lon);
       pin = `<span class="mm2-pin best" style="left:${p.x * 100}%;top:${p.y * 100}%"></span>`;
-      scores = `<div class="mm2-scores">${Object.entries(MATCH_METRICS).map(([k, d]) => {
-        const v = r.best.scores[k], sim = k === 'terrain' && r.terrainSim;
-        return `<div class="mm2-score ${k === m.metric ? 'on' : ''} ${scoreClass(v)}"><span>${d.short}${sim ? '<i class="sim">SAMPLE</i>' : ''}</span><b>${pct(v)}</b></div>`;
+      scores = `<div class="mm2-scores">${HEAT_KEYS.filter((k) => k !== 'combo').map((k) => {
+        const v = r.best.scores[k];
+        return `<div class="mm2-score ${k === m.metric ? 'on' : ''} ${scoreClass(v)}"><span>${RAIL_BY[k].icon} ${RAIL_BY[k].short}</span><b>${pct(v)}</b></div>`;
       }).join('')}</div>`;
     } else {
       scores = `<div class="mm2-note">${m.ref ? 'No data' : 'Pick a location to see matches'}</div>`;
     }
-    const overall = !isRef && r && r.best ? `<span class="mm2-pct ${scoreClass(r.best.overall)}">${pct(r.best.overall)}</span>` : '';
+    const v = !isRef && r && r.best ? r.best.scores[m.metric] : NaN;
+    const head = !isRef && r && r.best ? `<span class="mm2-pct ${scoreClass(v)}">${pct(v)}</span>` : '';
     return `<div class="mm2-card" data-body="${b}">
-        <div class="mm2-head"><span>${BODIES[b].label}</span>${overall}</div>
+        <div class="mm2-head"><span>${BODIES[b].label}</span>${head}</div>
         <button class="mm2-map" data-body="${b}" title="Go to ${name(b)}${!isRef && r && r.best ? ' best match' : ''}">
           ${mapHTML(BODIES[b], m.online)}<span class="mm2-heat" data-heat="${b}"></span>${pin}
         </button>
@@ -99,16 +136,11 @@ export function renderLeft(m, h) {
       </div>`;
   }).join('');
 
-  el.innerHTML = `${refHtml}
-    <div class="ml-chips" role="group" aria-label="Match shown on maps">${chips}</div>
-    <div class="mm2-list">${cards}</div>`;
-
-  // heat overlays (small canvases, one pixel per cell, scaled by CSS)
+  el.innerHTML = `${refHtml}${m.ref ? showing : ''}<div class="mm2-list">${cards}</div>`;
   others.forEach((b) => {
     const r = m.results[b], slot = el.querySelector(`[data-heat="${b}"]`);
     if (slot && r && !(m.ref && m.ref.body === b)) slot.appendChild(renderScoreCanvas(r[m.metric], { px: 1, gridLines: false }));
   });
-  el.querySelectorAll('[data-metric]').forEach((b) => b.addEventListener('click', () => h.onMetric(b.dataset.metric)));
   el.querySelectorAll('.mm2-map').forEach((b) => b.addEventListener('click', () => h.onPickMap(b.dataset.body)));
   el.querySelector('.ml-clear')?.addEventListener('click', h.onClear);
 }
@@ -131,7 +163,7 @@ export function renderAdvanced(m, h) {
       <button class="chip" id="adv-grid" aria-pressed="${m.gridLines}">2° GRID LINES</button></div>
     <div class="adv-row"><span class="adv-lbl">DETAIL</span>
       <button class="chip" id="adv-probe" ${m.ref ? '' : 'disabled'}>MULTI-METRIC PROBE (SAMPLE)</button></div>
-    <p class="adv-note">Overall match = ${m.weightsText}. Pressure is compared on a log scale (0% at 1000× apart).</p>`;
+    <p class="adv-note">Combo weights are set with the sliders under 🎛️ on the right. Pressure is compared on a log scale (0% at 1000× apart).</p>`;
   el.querySelectorAll('[data-stat]').forEach((b) => b.addEventListener('click', () => h.onStat(b.dataset.stat)));
   el.querySelectorAll('[data-scale]').forEach((b) => b.addEventListener('click', () => h.onScale(b.dataset.scale)));
   const range = el.querySelector('#adv-range');
@@ -142,7 +174,44 @@ export function renderAdvanced(m, h) {
   el.querySelector('#adv-probe').addEventListener('click', h.onProbe);
 }
 
+/* ---------------- right rail ---------------- */
+
+/** r = result for the active target (or null); heat = symbol currently drawn; onMetric(key). */
+export function renderRail(r, { onMetric, heat }) {
+  const box = $('rail-metrics');
+  if (!box) return;
+  box.innerHTML = RAIL.map((s) => {
+    const k = s.key, isGrid = k === 'grid';
+    const v = !isGrid && r && r.best ? r.best.scores[k] : NaN;
+    const has = !Number.isNaN(v);
+    const on = openView === k || (!isGrid && heat === k);
+    return `<button class="rail-metric ${has ? 'scored' : ''} ${on ? 'open' : ''} ${isGrid ? 'grid' : ''}" data-metric="${k}"
+        aria-pressed="${on}" title="${s.name}${isGrid ? ': all variables and body constants' : `${has ? `: ${pct(v)}${r ? ` vs ${name(r.target)}` : ''}` : ' (pick a location first)'}`}"
+        style="--tint:${tint(v, 0.25)};--edge:${tint(v, 0.95)}">
+        <span class="rail-icon" aria-hidden="true">${s.icon}</span>
+        <span class="rail-pct" style="${has ? `color:${tint(v, 1)}` : ''}">${isGrid ? '' : has ? pct(v) : '—'}</span>
+        <span class="rail-name">${s.short}</span>
+      </button>`;
+  }).join('');
+  box.querySelectorAll('.rail-metric').forEach((b) => b.addEventListener('click', () => onMetric(b.dataset.metric)));
+}
+
 /* ---------------- right panel ---------------- */
+
+const SOURCE = {
+  temp: { earth: 'NASA POWER (MERRA-2), ground-surface temperature 2001–2025', moon: 'LRO Diviner, measured surface temperature 2009–2015', mars: 'Mars Climate Database 6.2, surface temperature (climate model)' },
+  press: { earth: 'NASA POWER surface pressure (PS)', moon: 'No atmosphere (≈3×10⁻¹⁰ Pa), treated as 0', mars: 'Mars Climate Database 6.2, surface pressure' },
+};
+const TERRAIN_SOURCE = {
+  earth: 'NOAA ETOPO 2022 elevation (slope, roughness, relief) + proximity to known impact structures (team-compiled list; diameters unverified)',
+  moon: 'NASA LRO LOLA elevation (LDEM_16) + USGS Robbins lunar crater database',
+  mars: 'NASA MGS MOLA elevation (MEGDR) + USGS Robbins & Hynek Mars crater database',
+};
+const SUN_SOURCE = {
+  earth: 'WorldClim 2.1 surface solar radiation and wind speed (1970–2000 normals)',
+  moon: 'Solar energy calculated from latitude (no air); no wind (vacuum)',
+  mars: 'Solar energy calculated from latitude × 0.65 for typical dust; wind not in our data yet',
+};
 
 function adviceFor(ref, r, stat) {
   const b = r.best, v = b.values, s = b.scores, there = name(r.target), here = name(ref.body);
@@ -158,7 +227,11 @@ function adviceFor(ref, r, stat) {
       ? `Similar day–night swing (${swingHere.toFixed(0)}°C vs ${swingThere.toFixed(0)}°C): realistic thermal cycling for joints, seals and wheels.`
       : `Day–night swing is ${swingThere.toFixed(0)}°C there vs ${swingHere.toFixed(0)}°C here. ${swingThere > swingHere ? 'Expect harsher thermal cycling than this site can give.' : 'This site cycles harder than the target.'}`);
   }
-  rover.push(`Terrain match ${pct(s.terrain)}${r.terrainSim ? ' (sample data until real slope data is loaded)' : ''}: slope ${v.slope != null && !Number.isNaN(v.slope) ? v.slope.toFixed(1) + '°' : '—'} at the target.`);
+  const tr = v.terrain || {};
+  rover.push(`Terrain match ${pct(s.terrain)}: slope ${tr.slope != null && !Number.isNaN(tr.slope) ? tr.slope.toFixed(1) + '°' : '—'} there vs ${ref.terrain && !Number.isNaN(ref.terrain.slope) ? ref.terrain.slope.toFixed(1) + '°' : '—'} here. ${s.terrain >= 0.75 ? 'Good ground for mobility, navigation and wheel-wear tests.' : 'Expect different mobility challenges than this site can rehearse.'}`);
+  if (!Number.isNaN(v.solar) && !Number.isNaN(ref.solar)) {
+    rover.push(`Sunlight: ${Math.round(ref.solar)} W/m² here vs ${Math.round(v.solar)} W/m² there. ${Math.abs(v.solar - ref.solar) < 50 ? 'Solar panel and battery tests carry over well.' : v.solar > ref.solar ? 'More sun there: panels will over-perform compared with tests here.' : 'Less sun there: size panels and batteries with margin.'}`);
+  }
 
   human.push(s.temp >= 0.75
     ? `Crews would face similar surface temperatures (${fmtC(tThere)}), so spacesuit heating and cooling can be rehearsed realistically here.`
@@ -170,83 +243,87 @@ function adviceFor(ref, r, stat) {
       : `Air pressure: ${fmtP(pHere)} here vs ${fmtP(pThere)} there (${pct(s.press)} match on a log scale).${Math.max(pHere, pThere) / Math.min(pHere, pThere) > 10 ? ' Too thin to breathe or to cool by air: pressurised suits needed.' : ''}`);
   }
   human.push(b.overall >= 0.6
-    ? `A strong overall analog: a good candidate to shortlist for crewed EVA rehearsals and base-site training.`
-    : `A partial analog: useful for specific tests, not full mission rehearsals.`);
+    ? 'A strong overall analog: a good candidate to shortlist for crewed EVA rehearsals and base-site training.'
+    : 'A partial analog: useful for specific tests, not full mission rehearsals.');
   return { rover, human };
 }
 
-const METRIC_ICON = { temp: '🌡️', press: '⏲️', terrain: '⛰️' };
-const METRIC_NAME = { temp: 'Temperature', press: 'Pressure', terrain: 'Terrain' };
-const SOURCE = {
-  temp: { earth: 'NASA POWER (MERRA-2), ground-surface temperature 2001–2025', moon: 'LRO Diviner, measured surface temperature 2009–2015', mars: 'Mars Climate Database 6.2, surface temperature (climate model)' },
-  press: { earth: 'NASA POWER surface pressure (PS)', moon: 'No atmosphere (≈3×10⁻¹⁰ Pa), treated as 0', mars: 'Mars Climate Database 6.2, surface pressure' },
-};
-let openMetric = null;   // which metric's details are shown (kept while switching worlds)
+const row3 = (l, a, c) => `<tr><td>${l}</td><td class="num">${a}</td><td class="num">${c}</td></tr>`;
 
-export const getOpenMetric = () => openMetric;
-export function setOpenMetric(k) { openMetric = k; }
-
-/**
- * Right-edge rail: 🌡️ ⏲️ ⛰️ always visible. Grey until a location is picked, then
- * coloured red→green with the % for the world shown in the match panel.
- * r = result for the active target (or null); onMetric(key) when tapped.
- */
-export function renderRail(r, { onMetric }) {
-  const box = $('rail-metrics');
-  if (!box) return;
-  box.innerHTML = Object.keys(METRIC_ICON).map((k) => {
-    const s = r && r.best ? r.best.scores[k] : NaN;
-    const sim = k === 'terrain' && r && r.terrainSim;
-    const has = !Number.isNaN(s);
-    return `<button class="rail-metric ${has ? 'scored' : ''} ${openMetric === k ? 'open' : ''}" data-metric="${k}"
-        aria-pressed="${openMetric === k}" title="${METRIC_NAME[k]} match${has ? `: ${pct(s)}${r ? ` vs ${name(r.target)}` : ''}` : ' (pick a location first)'}${sim ? ' (sample data)' : ''}"
-        style="--tint:${tint(s, 0.25)};--edge:${tint(s, 0.95)}">
-        <span class="rail-icon" aria-hidden="true">${METRIC_ICON[k]}</span>
-        <span class="rail-pct" style="${has ? `color:${tint(s, 1)}` : ''}">${has ? pct(s) : '—'}</span>
-        <span class="rail-name">${{ temp: 'TEMP', press: 'PRESS', terrain: 'TERRAIN' }[k]}${sim ? '*' : ''}</span>
-      </button>`;
+function comboDetail(ref, r, weights) {
+  const b = r.best;
+  const total = WEIGHT_PARTS.reduce((s, p) => s + (r.weights[p.key] > 0 ? weights[p.key] : 0), 0) || 1;
+  const rows = WEIGHT_PARTS.map((p) => {
+    const s = b.scores[p.key], counted = r.weights[p.key] > 0 && !Number.isNaN(s);
+    return `<div class="cw-row">
+        <div class="cw-top"><span>${p.label}</span><b style="color:${tint(s, 1)}">${pct(s)}</b></div>
+        <input type="range" min="0" max="100" step="5" value="${weights[p.key]}" data-weight="${p.key}" aria-label="${p.label} weight">
+        <div class="cw-share"><span data-share="${p.key}">${counted ? Math.round((weights[p.key] / total) * 100) : 0}% of combo</span>${Number.isNaN(s) ? ' · no data here' : ''}</div>
+      </div>`;
   }).join('');
-  box.querySelectorAll('.rail-metric').forEach((b) => b.addEventListener('click', () => onMetric(b.dataset.metric)));
-}
-
-/** rgba() tint for a 0..1 score on the red→green ramp. */
-function tint(s, a) {
-  if (Number.isNaN(s)) return `rgba(255,255,255,${a * 0.4})`;
-  const [r, g, b] = matchColor(s);
-  return `rgba(${r},${g},${b},${a})`;
+  return `<p class="md-text">The combo mixes every measurement. Drag the sliders to decide what matters most for your mission; the heat maps, pins and % update when you let go.</p>
+    <div class="cw-list">${rows}</div>
+    <button class="mini-btn cw-reset">RESET WEIGHTS</button>`;
 }
 
 function metricDetail(k, ref, r, stat) {
   const b = r.best, v = b.values, s = b.scores[k], here = name(ref.body), there = name(r.target);
-  const row = (l, a, c) => `<tr><td>${l}</td><td class="num">${a}</td><td class="num">${c}</td></tr>`;
   const head = `<thead><tr><th></th><th class="num">${here} (here)</th><th class="num">${there} (match)</th></tr></thead>`;
   if (k === 'temp') {
     const d = v[stat] - ref[stat];
     return `<table class="metric-table">${head}<tbody>
-        ${row('Average', fmtC(ref.mean), fmtC(v.mean))}${row('Daily high', fmtC(ref.high), fmtC(v.high))}${row('Daily low', fmtC(ref.low), fmtC(v.low))}
-        ${row('Day–night swing', fmtC(ref.high - ref.low), fmtC(v.high - v.low))}</tbody></table>
+        ${row3('Average', fmtC(ref.mean), fmtC(v.mean))}${row3('Daily high', fmtC(ref.high), fmtC(v.high))}${row3('Daily low', fmtC(ref.low), fmtC(v.low))}
+        ${row3('Day–night swing', fmtC(ref.high - ref.low), fmtC(v.high - v.low))}${row3('Surface pressure', fmtP(ref.pressure), fmtP(v.pressure))}</tbody></table>
       <p class="md-text">Comparing <b>${STAT_LABEL[stat]}</b>: ${there} is ${Math.abs(d).toFixed(1)}°C ${d < 0 ? 'colder' : 'warmer'}.
-        Score = 100% − difference ÷ range (set in Advanced options) → <b>${pct(s)}</b>.</p>
+        Score = 100% − difference ÷ range (Advanced options) → <b>${pct(s)}</b>. Pressure match (log scale, 0% at ${10 ** PRESS_DECADES}× apart): <b>${pct(b.scores.press)}</b>.</p>
       <p class="md-src">${here}: ${esc(SOURCE.temp[ref.body])}<br>${there}: ${esc(SOURCE.temp[r.target])}</p>`;
   }
-  if (k === 'press') {
-    const a = ref.pressure, c = v.pressure;
-    const ratio = a > 0.5 && c > 0.5 ? (Math.max(a, c) / Math.min(a, c)) : null;
-    return `<table class="metric-table">${head}<tbody>${row('Surface pressure', fmtP(a), fmtP(c))}</tbody></table>
-      <p class="md-text">${ratio ? `Pressure differs by about <b>${ratio < 10 ? ratio.toFixed(1) : Math.round(ratio).toLocaleString()}×</b>.` : `${a < 0.5 ? here : there} is a vacuum, so there is nothing to match.`}
-        Compared on a log scale (0% at 1000× apart) → <b>${pct(s)}</b>. Pressure matters for suits, habitats, dust and heat loss.</p>
-      <p class="md-src">${here}: ${esc(SOURCE.press[ref.body])}<br>${there}: ${esc(SOURCE.press[r.target])}</p>`;
+  if (k === 'sunwind') {
+    const w = (x) => (x == null || Number.isNaN(x) ? '—' : `${x.toFixed(1)} m/s`);
+    const sol = (x) => (x == null || Number.isNaN(x) ? '—' : `${Math.round(x)} W/m²`);
+    return `<table class="metric-table">${head}<tbody>
+        ${row3('Solar energy (yearly avg.)', sol(ref.solar), sol(v.solar))}${row3('Wind speed', ref.body === 'moon' ? '0 (no air)' : ref.body === 'mars' ? 'not in data' : w(ref.wind), r.target === 'moon' ? '0 (no air)' : r.target === 'mars' ? 'not in data' : w(v.wind))}</tbody></table>
+      <p class="md-text">Average of solar (0% at ${SOLAR_RANGE} W/m² apart) and wind (0% at ${WIND_RANGE} m/s apart) similarity, using whichever is available → <b>${pct(s)}</b>. Sun sets power and heating; wind drives dust, erosion and lander loads.</p>
+      <p class="md-src">${here}: ${esc(SUN_SOURCE[ref.body])}<br>${there}: ${esc(SUN_SOURCE[r.target])}</p>`;
   }
-  const t = ref.terrain, f = (x, u, d = 1) => (x == null || Number.isNaN(x) ? '—' : `${x.toFixed(d)}${u}`);
+  // terrain
+  const t = ref.terrain, keys = b.terrainKeys || [];
+  const f = (x, kk) => (x == null || Number.isNaN(x) ? '—' : `${x.toFixed(kk.digits)}${kk.unit}`);
+  const names = keys.map((kk) => kk.label.replace(/ \(0–1\)/, '').toLowerCase());
   return `<table class="metric-table">${head}<tbody>
-      ${row('Slope', f(t.slope, '°'), f(v.slope, '°'))}${row('Local relief', f(t.relief, ' m', 0), f(v.relief, ' m', 0))}${row('Rock cover', f(t.rocks, '%', 0), f(v.rocks, '%', 0))}</tbody></table>
-    <p class="md-text">Average of slope, relief and rock-cover similarity → <b>${pct(s)}</b>. Steep, rocky ground stresses wheels and boots alike.</p>
-    ${r.terrainSim ? '<p class="md-warn">SAMPLE DATA: these terrain numbers are simulated placeholders until real slope data (LOLA / MOLA / NASADEM) is added to the grids. Not counted in the overall match.</p>' : ''}`;
+      ${keys.map((kk) => row3(kk.label, f(t[kk.key], kk), f(v.terrain[kk.key], kk))).join('')}</tbody></table>
+    <p class="md-text">Average similarity of ${names.join(', ')} → <b>${pct(s)}</b>. Steep, rough, cratered ground stresses wheels and boots alike.</p>
+    ${r.terrainSim ? '<p class="md-warn">SAMPLE DATA: the terrain files could not be loaded, so these numbers are simulated and not counted in the combo.</p>'
+      : `<p class="md-src">${here}: ${esc(TERRAIN_SOURCE[ref.body])}<br>${there}: ${esc(TERRAIN_SOURCE[r.target])}</p>`}`;
+}
+
+/** ▦ data grid: every variable here vs at the best match, then the whole-body constants. */
+function gridView(ref, r, grids) {
+  const here = name(ref.body), there = name(r.target);
+  const gi = cellIndex(ref.lat, ref.lon), ti = r.best.i;
+  const gH = grids[ref.body], gT = grids[r.target];
+  const cell = (body, i, g, vdef) => {
+    const x = g ? vdef.get(body, i, g) : { text: '—' };
+    const missing = Number.isNaN(x.v) || x.v == null;
+    return `<td class="num ${missing ? 'na' : ''}">${esc(x.text)}</td>`;
+  };
+  let group = '';
+  const rows = VARIABLES.map((vd) => {
+    const g = vd.group !== group ? `<tr class="dg-group"><td colspan="3">${esc((group = vd.group).toUpperCase())}</td></tr>` : '';
+    return `${g}<tr><td>${esc(vd.label)}</td>${cell(ref.body, gi, gH, vd)}${cell(r.target, ti, gT, vd)}</tr>`;
+  }).join('');
+  const consts = BODY_CONSTANTS.map((c) => `<tr><td>${esc(c.label)}</td><td>${esc(c.earth)}</td><td>${esc(c.moon)}</td><td>${esc(c.mars)}</td></tr>`).join('');
+  return `<h4>BODY VARIABLES <span class="dg-sub">change from place to place</span></h4>
+    <table class="metric-table data-grid"><thead><tr><th></th><th class="num">${here} (here)</th><th class="num">${there} (best match)</th></tr></thead><tbody>${rows}</tbody></table>
+    <p class="md-src">${here}: ${esc(VARIABLE_SOURCES[ref.body])}<br>${there}: ${esc(VARIABLE_SOURCES[r.target])}</p>
+    <h4>BODY CONSTANTS <span class="dg-sub">the same everywhere on each world</span></h4>
+    <table class="metric-table data-grid consts"><thead><tr><th></th><th>Earth</th><th>Moon</th><th>Mars</th></tr></thead><tbody>${consts}</tbody></table>
+    <p class="md-src">No Earth site can reproduce these. They are why every analog breaks down somewhere.</p>`;
 }
 
 /**
- * m = { ref, targets, active, result, stat, isSite }
- * h = { onTarget(id), onGo(), onClose(), onBriefing() }
+ * m = { ref, loading, targets, active, result, stat, isSite, weights, grids }
+ * h = { onTarget(id), onGo(), onClose(), onBriefing(), onWeights(w), onResetWeights() }
  */
 export function renderMatchPanel(m, h) {
   const el = $('site-detail');
@@ -260,14 +337,16 @@ export function renderMatchPanel(m, h) {
     return;
   }
   const b = r.best, ref = m.ref;
+  const view = openView || 'combo';
   const idx = m.targets.indexOf(m.active);
   const prev = m.targets[(idx - 1 + m.targets.length) % m.targets.length];
   const next = m.targets[(idx + 1) % m.targets.length];
-  const details = Object.keys(METRIC_ICON).map((k) =>
-    `<div class="mt-detail ${openMetric === k ? '' : 'hidden'}" data-detail="${k}" style="--edge:${tint(b.scores[k], 0.9)}">
-       <h4>${METRIC_ICON[k]} ${METRIC_NAME[k].toUpperCase()}</h4>${metricDetail(k, ref, r, m.stat)}</div>`).join('');
+  const sym = RAIL_BY[view];
+  const body = view === 'grid' ? gridView(ref, r, m.grids)
+    : view === 'combo' ? comboDetail(ref, r, m.weights) : metricDetail(view, ref, r, m.stat);
   const adv = adviceFor(ref, r, m.stat);
   const list = (arr) => `<ul>${arr.map((x) => `<li>${esc(x)}</li>`).join('')}</ul>`;
+  const viewScore = view === 'grid' ? NaN : b.scores[view];
 
   el.innerHTML = `
     <div class="mp-head">
@@ -280,9 +359,10 @@ export function renderMatchPanel(m, h) {
       <div class="mp-big" style="--c:${tint(b.overall, 1)}"><b>${pct(b.overall)}</b><span>${b.closestOnly ? 'NO MATCH' : 'MATCH!'}</span></div>
       <div class="mp-where">${b.closestOnly ? `Nothing on ${name(r.target)} is within range. Closest spot is ${Math.round(b.gap)}°C apart:` : ''}
         ${fmtLat(b.lat)} · ${fmtLon(b.lon)} vs ${esc(ref.label)} (${name(ref.body)})</div>
-      ${openMetric ? '' : `<p class="hint-line mt-hint">Tap ${Object.values(METRIC_ICON).join(' ')} on the right edge for temperature, pressure or terrain details</p>`}
-      ${details}
-      <button class="mini-btn wide mp-go">GO TO THIS SPOT ON ${BODIES[r.target].label} ▸</button>
+      <button class="mini-btn wide mp-go">🎯 GO TO THIS SPOT ON ${BODIES[r.target].label} ▸</button>
+      <div class="mt-detail" style="--edge:${tint(viewScore, 0.9)}">
+        <h4>${sym.icon} ${sym.name.toUpperCase()}${view === 'grid' ? '' : ` <span class="mt-score" style="color:${tint(viewScore, 1)}">${pct(viewScore)}</span>`}</h4>${body}
+      </div>
       <div class="mp-section rover"><h4>🚙 ROVER DEVELOPMENT</h4>${list(adv.rover)}</div>
       <div class="mp-section human"><h4>🧑‍🚀 HUMAN DEVELOPMENT</h4>${list(adv.human)}</div>
       ${m.isSite ? '<button class="mini-btn wide mp-brief">SITE BRIEFING ▸</button>' : ''}
@@ -291,5 +371,16 @@ export function renderMatchPanel(m, h) {
   el.querySelector('.brief-close').addEventListener('click', h.onClose);
   el.querySelector('.mp-go').addEventListener('click', h.onGo);
   el.querySelector('.mp-brief')?.addEventListener('click', h.onBriefing);
+  // combo sliders: live share text while dragging, recompute on release
+  const sliders = [...el.querySelectorAll('[data-weight]')];
+  const readWeights = () => Object.fromEntries(sliders.map((s) => [s.dataset.weight, Number(s.value)]));
+  sliders.forEach((s) => {
+    s.addEventListener('input', () => {
+      const w = readWeights(), tot = Object.entries(w).reduce((a, [k, x]) => a + (r.weights[k] > 0 || k === 'terrain' ? x : 0), 0) || 1;
+      Object.entries(w).forEach(([k, x]) => { const sp = el.querySelector(`[data-share="${k}"]`); if (sp) sp.textContent = `${Math.round((x / tot) * 100)}% of combo`; });
+    });
+    s.addEventListener('change', () => h.onWeights(readWeights()));
+  });
+  el.querySelector('.cw-reset')?.addEventListener('click', h.onResetWeights);
   el.classList.remove('hidden');
 }
