@@ -9,8 +9,10 @@
 export const GRID_FILES = {
   moon: ['../../moon_data/moon_grid.csv', 'data/moon_grid.csv'],
   mars: ['../../mars_data/mars_grid.csv', 'data/mars_grid.csv'],
+  earth: ['../../earth_data/earth_grid.csv'],   // used by the reverse search (Moon/Mars -> Earth)
 };
 const SOURCE_NAMES = {
+  nasa_power_clim: 'NASA POWER climatology',
   diviner_gcp_2017: 'LRO Diviner (measured)',
   mcd_v6_2: 'Mars Climate Database 6.2',
   model_placeholder: 'placeholder model',
@@ -80,6 +82,7 @@ export function gridFromCSV(text, body) {
     cells++;
   }
   g.cells = cells;
+  g.filled = g.mean.reduce((n, v) => n + (Number.isNaN(v) ? 0 : 1), 0);  // cells with a temperature
   g.sourceIds = [...sources];
   g.sourceLabel = g.sourceIds.map((s) => SOURCE_NAMES[s] || s).join(', ') || 'unknown source';
   g.placeholder = g.sourceIds.includes('model_placeholder');
@@ -122,6 +125,12 @@ export function cellIndex(lat, lon) {
   const row = Math.min(ROWS - 1, Math.max(0, Math.floor((90 - lat) / RES)));
   const col = Math.min(COLS - 1, Math.max(0, Math.floor((lon + 180) / RES)));
   return row * COLS + col;
+}
+
+/** { mean, high, low } of the grid cell containing lat/lon (NaN where missing). */
+export function cellTemps(grid, lat, lon) {
+  const i = cellIndex(lat, lon);
+  return { mean: grid.mean[i], high: grid.high[i], low: grid.low[i] };
 }
 
 /** Match fraction 0..1 (NaN if no data): 1 at equal temperature, 0 at `range` °C apart. */

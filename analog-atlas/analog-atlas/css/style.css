@@ -313,6 +313,8 @@ body.tactical .vignette { background: radial-gradient(ellipse at center, transpa
 .temp-hint.err { color: #ff8a80; }
 .temp-ref { position: relative; padding-right: 28px; }
 .temp-ref-name { font-weight: 700; font-size: 16px; letter-spacing: 0.05em; }
+.temp-ref-body { font-family: var(--font-mono); font-size: 9px; letter-spacing: 0.15em; color: var(--accent); }
+.temp-note b { color: inherit; }
 .temp-clear { position: absolute; top: 0; right: 0; width: 22px; height: 22px; background: none; border: 1px solid var(--panel-edge); color: var(--text); cursor: pointer; font-size: 11px; }
 .temp-clear:hover { border-color: var(--accent); color: var(--accent); }
 .temp-vals { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; }

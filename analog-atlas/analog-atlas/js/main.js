@@ -80,17 +80,31 @@ const tempHandlers = {
   onClear: () => { state.temp.ref = null; refreshTemp(); },
 };
 
+/**
+ * Which body shows the heat map for the current reference:
+ *   reference on Earth      -> Moon and Mars  (forward search)
+ *   reference on Moon/Mars  -> Earth only     (reverse search)
+ */
+function heatShownOn(bodyId) {
+  const ref = state.temp.ref;
+  if (!ref) return false;
+  return ref.body === 'earth' ? bodyId !== 'earth' : bodyId === 'earth';
+}
+
 /** Re-render the panel and the globe overlays for the current body. */
 function refreshTemp() {
   const t = state.temp;
-  ui.renderTempPanel({ ...t, body: state.body, grid: t.grids[state.body] }, tempHandlers);
-  globe.setReference(state.body === 'earth' && t.ref ? { ...t.ref, label: t.ref.label.toUpperCase() } : null);
+  ui.renderTempPanel({
+    ...t, body: state.body, grid: t.grids[state.body], heatHere: heatShownOn(state.body),
+  }, tempHandlers);
+  const onRefBody = t.ref && t.ref.body === state.body;
+  globe.setReference(onRefBody ? { ...t.ref, label: t.ref.label.toUpperCase() } : null);
   drawHeat();
 }
 
 function drawHeat() {
   const t = state.temp, grid = t.grids[state.body];
-  if (state.body === 'earth' || !t.ref || !grid) { globe.setHeatmap(null); return; }
+  if (!heatShownOn(state.body) || !grid) { globe.setHeatmap(null); return; }
   const target = t.ref[t.stat];
   globe.setHeatmap(temp.renderMatchCanvas(grid, t.stat, target, t.range, { gridLines: t.gridLines }));
   ui.updateTempSummary(temp.summarize(grid, t.stat, target, t.range), t);
@@ -111,7 +125,7 @@ async function setTempReference(lat, lon, label) {
   try {
     const v = await temp.fetchEarthTemps(lat, lon);
     if (token !== refToken) return;   // a newer click won
-    t.ref = { lat, lon, label: label || 'Selected point', ...v };
+    t.ref = { body: 'earth', lat, lon, label: label || 'Selected point', ...v };
   } catch (err) {
     if (token !== refToken) return;
     t.error = `Couldn't get temperature: ${err.message}`;
@@ -120,14 +134,31 @@ async function setTempReference(lat, lon, label) {
   refreshTemp();
 }
 
+/** Reverse search: reference temperature read from the Moon/Mars grid cell. */
+function setBodyReference(bodyId, lat, lon, label) {
+  const t = state.temp, grid = t.grids[bodyId];
+  ++refToken;                          // cancels any Earth lookup still in flight
+  t.loading = false;
+  if (!grid) { t.error = `The ${BODIES[bodyId].label} temperature grid isn't loaded.`; refreshTemp(); return; }
+  const v = temp.cellTemps(grid, lat, lon);
+  if (Number.isNaN(v.mean)) {
+    t.error = `No ${BODIES[bodyId].label} temperature data at this point.`;
+  } else {
+    t.error = null;
+    t.ref = { body: bodyId, lat, lon, label: label || `${bodyId === 'moon' ? 'Moon' : 'Mars'} point`, ...v };
+  }
+  refreshTemp();
+}
+
 function tempReadout(pos) {
   const t = state.temp, grid = t.grids[state.body];
-  if (!pos || state.body === 'earth' || !grid) { ui.updateTempReadout(null); return; }
+  if (!pos || !grid) { ui.updateTempReadout(null); return; }
+  if (state.body === 'earth' && !heatShownOn('earth')) { ui.updateTempReadout(null); return; } // Earth temps come from NASA POWER on click
   const i = temp.cellIndex(pos.lat, pos.lon);
   const v = grid[t.stat][i];
   if (Number.isNaN(v)) { ui.updateTempReadout('no data'); return; }
   let text = `${v.toFixed(1)}°C ${temp.STATS[t.stat].label}`;
-  if (t.ref) text += ` · ${Math.round(temp.matchValue(grid, i, t.stat, t.ref[t.stat], t.range) * 100)}% MATCH`;
+  if (heatShownOn(state.body)) text += ` · ${Math.round(temp.matchValue(grid, i, t.stat, t.ref[t.stat], t.range) * 100)}% MATCH`;
   ui.updateTempReadout(text);
 }
 
@@ -170,6 +201,7 @@ function selectSite(site) {
     setRotateButton(false);
     globe.flyTo(site.lat, site.lon);
     if (site.body === 'earth') setTempReference(site.lat, site.lon, site.name);
+    else setBodyReference(site.body, site.lat, site.lon, site.name);
   }
 }
 
@@ -226,10 +258,10 @@ async function init() {
     .on('select', (site) => { if (site) selectSite(site); })
     .on('hover', (site) => globe.highlight(site ? site.id : state.selectedId))
     .on('ground', (pos) => {
-      if (state.body !== 'earth') return;
       globe.setAutoRotate(false);
       setRotateButton(false);
-      setTempReference(pos.lat, pos.lon, 'Selected point');
+      if (state.body === 'earth') setTempReference(pos.lat, pos.lon, 'Selected point');
+      else setBodyReference(state.body, pos.lat, pos.lon);
     })
     .on('cursor', (pos) => { ui.updateCursor(pos); tempReadout(pos); })
     .on('camera', (c) => ui.updateAltitude(c.range));

@@ -319,12 +319,13 @@ export function renderTempPanel(m, h) {
   else if (m.error) refHtml = `<div class="temp-hint err">${esc(m.error)}</div>`;
   else if (!m.ref) {
     refHtml = isEarth
-      ? '<div class="temp-hint">Click anywhere on Earth, or an analog site, to set the reference temperature.</div>'
-      : '<div class="temp-hint">No Earth reference yet.</div><button class="jump temp-goto" data-goto="earth"><span class="jump-body">EARTH</span><span class="jump-name">Pick a spot on Earth</span><span class="jump-arrow">▸</span></button>';
+      ? '<div class="temp-hint">Click anywhere on Earth, or an analog site, to see matching temperatures on the Moon and Mars.</div>'
+      : `<div class="temp-hint">Click anywhere on ${m.body === 'moon' ? 'the Moon' : 'Mars'}, or a target site, to find places on <b>Earth</b> with the same temperature.</div>`;
   } else {
     const r = m.ref;
     refHtml = `
       <div class="temp-ref">
+        <div class="temp-ref-body">${esc(BODIES[r.body].label)} REFERENCE</div>
         <div class="temp-ref-name">${esc(r.label)}</div>
         <div class="coords">${fmtLat(r.lat)} · ${fmtLon(r.lon)}</div>
         <button class="temp-clear" title="Clear reference" aria-label="Clear reference">✕</button>
@@ -350,12 +351,12 @@ export function renderTempPanel(m, h) {
     </div>
     <div class="temp-row"><span class="temp-lbl">CELLS</span>
       <button class="chip" id="temp-grid" aria-pressed="${m.gridLines}">2° GRID LINES</button></div>
-    ${isEarth
-      ? `<div class="jumps temp-jumps">${['moon', 'mars'].map((b) => `<button class="jump temp-goto" data-goto="${b}">
-          <span class="jump-body">VIEW ON</span><span class="jump-name">${BODIES[b].label}</span><span class="jump-arrow">▸</span></button>`).join('')}</div>`
-      : `<div class="temp-summary" id="temp-summary"></div>`}
+    ${m.heatHere
+      ? '<div class="temp-summary" id="temp-summary"></div>'
+      : `<div class="jumps temp-jumps">${(m.ref.body === 'earth' ? ['moon', 'mars'] : ['earth']).map((b) => `<button class="jump temp-goto" data-goto="${b}">
+          <span class="jump-body">VIEW ON</span><span class="jump-name">${BODIES[b].label}</span><span class="jump-arrow">▸</span></button>`).join('')}</div>`}
     ${m.gridError ? `<div class="temp-hint err">${esc(m.gridError)}</div>` : ''}
-    ${!isEarth && m.grid ? `<div class="temp-note${m.grid.placeholder ? ' warn' : ''}">${BODIES[m.body].label} data: ${esc(m.grid.sourceLabel)}${m.grid.placeholder ? ' (not measured data)' : ''} · surface temperature, 2° grid</div>` : ''}` : '';
+    ${m.heatHere && m.grid ? gridNote(m) : ''}` : '';
 
   box.innerHTML = refHtml + controls;
   box.querySelectorAll('[data-stat]').forEach((b) => b.addEventListener('click', () => h.onStat(b.dataset.stat)));
@@ -366,6 +367,16 @@ export function renderTempPanel(m, h) {
   range?.addEventListener('input', () => { $('temp-range-val').textContent = range.value; h.onRange(Number(range.value)); });
   const op = box.querySelector('#temp-opacity');
   op?.addEventListener('input', () => h.onOpacity(Number(op.value) / 100));
+}
+
+/** Data-source line under the summary; warns about placeholder or partial grids. */
+function gridNote(m) {
+  const g = m.grid;
+  const partial = g.filled < 16200
+    ? ` · <b>partial:</b> ${g.filled.toLocaleString()} of 16,200 cells have data (clear cells = not downloaded yet)` : '';
+  const warn = g.placeholder || g.filled < 16200;
+  return `<div class="temp-note${warn ? ' warn' : ''}">${esc(BODIES[m.body].label)} data: ${esc(g.sourceLabel)}` +
+    `${g.placeholder ? ' (not measured data)' : ''} · surface temperature, 2° grid${partial}</div>`;
 }
 
 /** s = summary from temperature.summarize() or null */
