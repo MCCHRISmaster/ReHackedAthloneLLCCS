@@ -404,13 +404,13 @@ body[data-body="mars"] { --accent: #ff7043; --accent-dim: rgba(255,112,67,0.55);
 .scan-sweep { position: fixed; inset: 0; pointer-events: none; opacity: 0; transition: opacity .4s; overflow: hidden; }
 .scan-sweep::before {
   content: ""; position: absolute; left: 0; right: 0; height: 18vh; top: -20vh;
-  background: linear-gradient(to bottom, transparent, color-mix(in srgb, var(--accent) 9%, transparent) 70%, color-mix(in srgb, var(--accent) 22%, transparent) 99%, transparent);
+  background: linear-gradient(to bottom, transparent, color-mix(in srgb, var(--accent) 7%, transparent) 70%, color-mix(in srgb, var(--accent) 17%, transparent) 99%, transparent);
   animation: sweep 7s linear infinite;
 }
 @keyframes sweep { to { transform: translateY(125vh); } }
 body.tactical .scan-sweep { opacity: 1; }
-body.tactical .scanlines { background: repeating-linear-gradient(to bottom, rgba(255,255,255,0.04) 0 1px, transparent 1px 3px); }
-body.tactical .vignette { background: radial-gradient(ellipse at center, transparent 45%, rgba(0,0,0,0.8) 100%); }
+body.tactical .scanlines { background: repeating-linear-gradient(to bottom, rgba(255,255,255,0.032) 0 1px, transparent 1px 3px); }
+body.tactical .vignette { background: radial-gradient(ellipse at center, transparent 48%, rgba(0,0,0,0.7) 100%); }
 @media (prefers-reduced-motion: reduce) { .scan-sweep::before { animation: none; } }
 @media (max-width: 820px) { .mode-toggle { padding: 6px 8px; font-size: 10px; } }
 
@@ -418,3 +418,41 @@ body.tactical .vignette { background: radial-gradient(ellipse at center, transpa
 .hint { white-space: nowrap; }
 .credit { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 42vw; }
 @media (max-width: 1280px) { .hint { display: none; } }
+
+/* ---------- Simple view: cleaner globe ---------- */
+body.simple .scanlines { display: none; }
+body.simple:not(.tactical) .vignette { background: radial-gradient(ellipse at center, transparent 65%, rgba(0,0,0,0.4) 100%); }
+/* soft halo behind the current globe (positioned by js/space.js) */
+.globe-glow { position: absolute; left: 0; top: 0; border-radius: 50%; pointer-events: none; opacity: 0; transition: opacity .5s; display: none; --glow: 120,170,230; }
+body.simple:not(.tactical) .globe-glow { display: block; }
+.globe-glow { background: radial-gradient(circle, rgba(var(--glow),0.42) 36%, rgba(var(--glow),0.16) 48%, rgba(var(--glow),0) 70%); }
+.globe-glow[data-body="earth"] { --glow: 110,175,240; }
+.globe-glow[data-body="moon"] { --glow: 210,218,226; }
+.globe-glow[data-body="mars"] { --glow: 240,130,80; }
+
+/* ---------- "How to explore" card ---------- */
+.help-card {
+  left: 50%; top: 50%; transform: translate(-50%, -50%); width: min(440px, calc(100vw - 32px));
+  padding: 20px 22px 18px; z-index: 50; background: rgba(8,12,16,0.94);
+}
+.help-kicker { font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.2em; color: var(--accent); }
+.help-card h2 { margin: 4px 0 12px; font-size: 26px; letter-spacing: 0.08em; }
+.help-list { list-style: none; margin: 0 0 16px; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.help-list li { display: grid; grid-template-columns: 74px 1fr; gap: 12px; align-items: baseline; font-size: 15px; line-height: 1.35; }
+.help-key { font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.12em; text-align: center; padding: 3px 0; border: 1px solid var(--accent); color: var(--accent); }
+.help-ok {
+  width: 100%; padding: 10px; font-family: var(--font-ui); font-weight: 700; font-size: 15px; letter-spacing: 0.2em; cursor: pointer;
+  background: var(--accent); color: #000; border: 0; clip-path: polygon(12px 0, 100% 0, calc(100% - 12px) 100%, 0 100%);
+}
+
+/* ---------- Background planets as rotating 3-D globes (js/planet-art.js → PlanetGlobe) ---------- */
+.globe3d { position: absolute; inset: 0; display: block; border-radius: 50%; transition: box-shadow .3s; }
+.globe3d > canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: none; }
+.globe3d.ready > canvas { display: block; }
+.globe3d.ready > .sphere { display: none; }
+.globe3d > .sphere { position: absolute; inset: 0; }
+/* thin blue atmosphere rim, like WorldWind's Earth atmosphere */
+.globe3d[data-body="earth"].ready { box-shadow: 0 0 0 1px rgba(160,205,255,0.55), 0 0 10px 2px rgba(120,180,255,0.55), 0 0 26px 6px rgba(90,150,255,0.25); }
+.space-planet.hover .globe3d { box-shadow: 0 0 0 2px var(--accent), 0 0 24px var(--accent-dim); }
+/* no Earth atmosphere rim on the background globe in Tactical (the Tactical globe hides its atmosphere) */
+.globe3d.tactical[data-body="earth"].ready { box-shadow: none; }

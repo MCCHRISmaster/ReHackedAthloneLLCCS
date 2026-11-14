@@ -10,14 +10,15 @@
  * in view as you orbit.
  */
 import { BODIES } from './config.js';
-import { sphereHTML } from './planet-art.js';
+import { PlanetGlobe } from './planet-art.js';
 
 const WHEEL = {
   backSize: 0.11,      // planet diameter at a back position, fraction of the viewport's short side
   rx: 0.3,             // wheel half-width, fraction of viewport width (narrowed to clear the left HUD)
   ry: 0.37,            // how far up the wheel reaches, fraction of viewport height
   spinMs: 1500,
-  fadeMs: 350,         // globe canvas fade out / in
+  handoffMs: 150,      // globe → stand-in sprite cross-fade at the start
+  fadeMs: 450,         // stand-in sprite → new globe fade at the end
 };
 const PARALLAX = { x: 0.05, y: 0.035 };  // max drift as a fraction of the viewport
 const LEFT_HUD_PX = 320;                  // width of the left panel column
@@ -30,18 +31,26 @@ export class SpaceBackdrop {
    * getCamera()      → { lat, lon, heading }
    * getHomeRadius()  → on-screen radius (px) of a globe at its home view
    */
-  constructor(el, { online, getCamera, getHomeRadius }) {
+  constructor(el, { online, getCamera, getHomeRadius, getGlobeRadius }) {
     this.el = el;
     this.getCamera = getCamera;
     this.getHomeRadius = getHomeRadius;
+    this.getGlobeRadius = getGlobeRadius;
+    // soft halo behind the current globe (shown in Simple view via CSS)
+    this.glow = document.createElement('div');
+    this.glow.className = 'globe-glow';
+    el.appendChild(this.glow);
     this.sprites = Object.values(BODIES).filter((b) => b.enabled).map((b) => {
       const s = document.createElement('div');
       s.className = 'space-planet';
       s.dataset.body = b.id;
-      s.innerHTML = `${sphereHTML(b, online)}<span class="space-name">${b.label}</span>`;
+      const globe = new PlanetGlobe(b, online);   // real rotating 3-D globe from NASA imagery
+      s.appendChild(globe.el);
+      s.insertAdjacentHTML('beforeend', `<span class="space-name">${b.label}</span>`);
       el.appendChild(s);
-      return { id: b.id, el: s, x: 0, y: 0, d: 0, depth: 0 };
+      return { id: b.id, el: s, globe, x: 0, y: 0, d: 0, depth: 0 };
     });
+    this.lastNow = performance.now();
     this.n = this.sprites.length;
     this.pos = 0;           // wheel position, in slots (index of the body in front)
     this.spin = null;
@@ -54,6 +63,12 @@ export class SpaceBackdrop {
   indexOf(id) { return this.sprites.findIndex((s) => s.id === id); }
 
   /** Instantly put bodyId in front. */
+  /** Imagery / Tactical look for one body's 3-D globe: { layerId, tactical }. */
+  setLook(bodyId, look) {
+    const sp = this.sprites.find((s) => s.id === bodyId);
+    if (sp) sp.globe.setLook(look);
+  }
+
   setActive(bodyId) {
     this.pos = this.indexOf(bodyId);
     this.spin = null;
@@ -85,16 +100,28 @@ export class SpaceBackdrop {
   }
 
   frame(now) {
+    const dt = Math.min(0.1, (now - this.lastNow) / 1000);
+    this.lastNow = now;
     let mult = null;
     if (this.spin) {
       const s = this.spin;
-      const k = Math.min(1, (now - s.t0) / WHEEL.spinMs);
+      const k = Math.min(1, Math.max(0, (now - s.t0) / WHEEL.spinMs));
       const e = ease(k);
       this.pos = mix(s.from, s.to, e);
       mult = { idx: s.outIdx, m: mix(s.startScale, 1, e) };
       if (k >= 1) { this.spin = null; this.pos = s.to; s.done(); }
     }
     const frontIdx = ((Math.round(this.pos) % this.n) + this.n) % this.n;
+
+    const gr = this.getGlobeRadius ? this.getGlobeRadius() : 0;
+    const gs = this.glow.style;
+    const gd = gr * 2.5;
+    gs.width = gs.height = `${gd}px`;
+    gs.transform = `translate(${window.innerWidth / 2 - gd / 2}px, ${window.innerHeight / 2 - gd / 2}px)`;
+    // hide while switching, and when zoomed in so far the globe fills the screen
+    gs.opacity = this.spin || this.frontVisible || gr > Math.max(window.innerWidth, window.innerHeight) ? 0 : 1;
+    this.glow.dataset.body = this.sprites[frontIdx].id;
+
     this.sprites.forEach((sp, i) => {
       let rel = (i - this.pos) % this.n;
       rel = ((rel + this.n * 1.5) % this.n) - this.n / 2;  // wrap into [-n/2, n/2)
@@ -109,6 +136,8 @@ export class SpaceBackdrop {
       st.visibility = hidden ? 'hidden' : 'visible';
       st.zIndex = String(Math.round(p.depth * 100));
       sp.el.classList.toggle('front', i === frontIdx);
+      // only spin/redraw globes you can see; evenly lit up front (like WorldWind), shaded further back
+      if (!hidden) sp.globe.draw(p.d, dt, 1 - p.depth);
     });
   }
 
@@ -130,8 +159,17 @@ export class SpaceBackdrop {
    * Spin the wheel the short way round until bodyId is in front.
    * globeRadiusPx = current globe disc on screen. swap() is called while the
    * canvas is faded out; resolves when the new globe is showing.
+   *
+   * The hand-over is hidden by making the 3-D sprite an exact, moving stand-in
+   * for the WorldWind globe at both ends (it spins at the globe's auto-rotate
+   * speed and direction, so nothing pauses or jumps):
+   *   fromView    {lat, lon, rotating} what the camera is looking at now → outgoing sprite takes over from there
+   *   toView      {lat, lon} the new globe's home view → incoming sprite arrives facing it
+   *   ready()     resolves once the new globe has drawn its imagery; only then does it fade in
+   *   onHandBack({lat, lon}) called just before the fade: point the real camera at exactly what
+   *               the incoming sprite is showing at that moment
    */
-  transitionTo(bodyId, { canvas, globeRadiusPx, swap }) {
+  transitionTo(bodyId, { canvas, globeRadiusPx, swap, fromView, toView, ready = () => Promise.resolve(), onHandBack = null }) {
     const to = this.indexOf(bodyId);
     const fromIdx = ((Math.round(this.pos) % this.n) + this.n) % this.n;
     const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -142,17 +180,28 @@ export class SpaceBackdrop {
     if (delta < -this.n / 2) delta += this.n;
     const homeR = this.getHomeRadius();
     const startScale = Math.min(3, Math.max(0.3, globeRadiusPx / homeR));
+    const outgoing = this.sprites[fromIdx].globe, incoming = this.sprites[to].globe;
+    // keep turning only if the real globe was turning, so the hand-over is motion-continuous
+    if (fromView) outgoing.faceTo(fromView.lat, fromView.lon, { hold: !fromView.rotating });
+    if (toView) incoming.faceTo(toView.lat, toView.lon);
 
-    canvas.style.transition = `opacity ${WHEEL.fadeMs}ms ease`;
+    // quick cross-fade to the (identical-looking) sprite, then the wheel turns
+    canvas.style.transition = `opacity ${WHEEL.handoffMs}ms linear`;
     canvas.style.opacity = '0';
     this.frontVisible = true;
     return new Promise((resolve) => {
-      setTimeout(swap, WHEEL.spinMs * 0.5); // new globe starts loading while hidden
+      setTimeout(swap, WHEEL.handoffMs + WHEEL.spinMs * 0.4); // new globe loads while hidden
       this.spin = {
-        from: this.pos, to: this.pos + delta, t0: performance.now(), outIdx: fromIdx, startScale,
+        from: this.pos, to: this.pos + delta, t0: performance.now() + WHEEL.handoffMs, outIdx: fromIdx, startScale,
         done: () => {
-          canvas.style.opacity = '1';
-          setTimeout(() => { this.frontVisible = false; resolve(); }, WHEEL.fadeMs);
+          outgoing.release();
+          // keep the incoming sprite in place until the real globe has its imagery, then fade the globe in over it
+          ready().then(() => {
+            if (onHandBack) onHandBack({ lat: incoming.viewLat, lon: incoming.centerLon });
+            canvas.style.transition = `opacity ${WHEEL.fadeMs}ms ease`;
+            canvas.style.opacity = '1';
+            setTimeout(() => { this.frontVisible = false; incoming.release(); resolve(); }, WHEEL.fadeMs);
+          });
         },
       };
     });

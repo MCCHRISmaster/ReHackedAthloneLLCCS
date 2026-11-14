@@ -90,7 +90,7 @@ export const BODIES = {
     offlineLayer: { label: 'Placeholder sphere', note: 'Live NASA imagery needs an internet connection' },
     tactical: {
       accent: '#e3e8ea',
-      imagery: { bands: 5, ceil: 0.45, edgeFloor: 45, edgeGain: 1.0 },
+      imagery: { bands: 5, ceil: 0.45, edgeFloor: 45, edgeGain: 0.8 },
       contours: { source: 'trek', body: 'Moon', layer: 'LRO_LOLA_DEM_Global_128ppd_v04', ext: 'png', levels: 6,
         mode: 'gray', classes: 16, note: 'Contours: LRO LOLA DEM 128 px/° (Moon Trek)' },
     },
@@ -121,7 +121,7 @@ export const BODIES = {
       // Trek has no greyscale MOLA DEM tile service reachable from browsers, so
       // contours follow the colour bands of MOLA colour-coded elevation instead.
       contours: { source: 'trek', body: 'Mars', layer: 'Mars_MGS_MOLA_ClrShade_merge_global_463m', ext: 'jpg', levels: 8,
-        mode: 'hue', classes: 20, minorAlpha: 90, note: 'Contours: MGS MOLA colour elevation (Mars Trek)' },
+        mode: 'hue', classes: 20, minorAlpha: 72, note: 'Contours: MGS MOLA colour elevation (Mars Trek)' },
     },
   },
 };
@@ -232,3 +232,33 @@ export const BODY_FACTS = [
 
 /** Best-match search grid (degrees). Real data grids may be finer. */
 export const MATCH_SEARCH_STEP_DEG = 3;
+
+/* ------------------------------------------------------------------------ *
+ *  Illustrated planets (default in Simple view): NASA imagery redrawn as flat
+ *  map colours with outlines. `from` = which layer in BODIES.<id>.layers to
+ *  restyle. Earth classifies colour (water / ice / desert / green / bare);
+ *  Moon and Mars band by brightness (thresholds = luminance 0..1 between
+ *  colours, darkest first).
+ * ------------------------------------------------------------------------ */
+export const ILLUSTRATED = {
+  earth: {
+    from: 'gibs-bmng', kind: 'earth', texture: 0.2,
+    //       deep sea   shallow    ice        desert     grassland  forest     bare land
+    colors: ['#3d7fc4', '#5fa3db', '#f4f7fa', '#e9cf94', '#9cc97a', '#6aa35c', '#c7b48a'],
+    line: '#24507f',
+  },
+  moon: {
+    from: 'trek-lro-wac', kind: 'bands', thresholds: [0.2, 0.28, 0.38], texture: 0.3,
+    colors: ['#6c737c', '#959ca4', '#bcc2c8', '#e2e6ea'],
+    line: '#4e545b',
+  },
+  mars: {
+    from: 'trek-viking', kind: 'bands', thresholds: [0.2, 0.27, 0.35], texture: 0.3,
+    colors: ['#8c4128', '#b85a34', '#d67f4b', '#eaa877', '#f6efe8'],
+    polar: { minL: 0.5, maxSat: 40 },
+    line: '#5e2816',
+  },
+};
+
+/** Simple-view navigation: north-up, no tilt, and the planet always stays in view. */
+export const SIMPLE_NAV = { minRangeRadii: 0.003, maxRangeRadii: 6, centreOnClickMs: 900 };

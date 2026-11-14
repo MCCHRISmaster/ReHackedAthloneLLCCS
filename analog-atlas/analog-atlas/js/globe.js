@@ -9,12 +9,12 @@
  *   flyTo(lat, lon, range), zoomBy(f), resetView(), setAutoRotate(on),
  *   on('select' | 'probe' | 'space' | 'pointer' | 'hover' | 'cursor' | 'camera', fn)
  */
-import { CAMERA, BODIES, TACTICAL } from './config.js';
+import { CAMERA, BODIES, TACTICAL, ILLUSTRATED, SIMPLE_NAV } from './config.js';
 import {
   createLayer, createBundledEarth, createBundledEarthStyled, createPlaceholderSurface,
   createGridLayer, createZoneLayer,
 } from './layers.js';
-import { stylizeImagery, contourTile, ringSprite } from './tactical-fx.js';
+import { stylizeImagery, contourTile, ringSprite, illustrateImagery } from './tactical-fx.js';
 
 export class GlobeView {
   constructor(canvasId, { online }) {
@@ -28,6 +28,7 @@ export class GlobeView {
     this.markerCache = {};
     this.tactical = false;
     this.selectedId = null;
+    this.simple = false;         // Simple view: round pins, labels on hover, north-up navigation
 
     WorldWind.Logger.setLoggingLevel(WorldWind.Logger.LEVEL_WARNING);
     // Smooth sphere (no elevation coverages): WorldWind's old NASA elevation
@@ -84,6 +85,11 @@ export class GlobeView {
       this.activeBasemap = body.defaultLayer;
     }
 
+    // --- illustrated view (Simple view default; created on first use) ---
+    this.illusStyle = (img) => illustrateImagery(img, ILLUSTRATED[bodyId]);
+    this.illusBase = null;    // whole-globe underlay (bundled Earth / placeholder), works offline
+    this.illusTiles = null;   // restyled NASA tiles, full resolution
+
     // --- tactical view (created lazily where expensive) ---
     const tac = body.tactical;
     this.tacStyle = (img) => stylizeImagery(img, tac.accent, tac.imagery);
@@ -102,6 +108,7 @@ export class GlobeView {
       this.atmosphere.time = new Date();
       stars.time = this.atmosphere.time;
       add(this.atmosphere);
+      this.applyLighting();
     }
 
     this.siteLayer = add(new WorldWind.RenderableLayer('Sites'));
@@ -133,9 +140,26 @@ export class GlobeView {
   applyVisibility() {
     const t = this.tactical;
     const body = this.body;
-    this.realBase.enabled = !t;
+    const illus = !t && this.activeBasemap === 'illustrated';
+    this.realBase.enabled = !t && !illus;
     this.basemaps.forEach((layer, id) => { layer.enabled = !t && id === this.activeBasemap; });
     if (this.atmosphere) this.atmosphere.enabled = !t;
+
+    if (illus && !this.illusBase) {
+      this.illusBase = body.id === 'earth'
+        ? createBundledEarthStyled(this.illusStyle, () => this.wwd.redraw())
+        : createPlaceholderSurface(ILLUSTRATED[body.id].colors[1]);
+      this.insertBeforeSlot(this.illusBase);
+    }
+    if (illus && this.online && !this.illusTiles) {
+      const def = body.layers.find((l) => l.id === ILLUSTRATED[body.id].from);
+      if (def) {
+        this.illusTiles = createLayer(def, { transform: this.illusStyle, cacheTag: 'illustrated' });
+        this.insertBeforeSlot(this.illusTiles);   // after the base, so drawn on top of it
+      }
+    }
+    if (this.illusBase) this.illusBase.enabled = illus;
+    if (this.illusTiles) this.illusTiles.enabled = illus;
 
     if (t && !this.tacBase) {
       // stylised always-available base (bundled Earth or placeholder sphere)
@@ -146,13 +170,15 @@ export class GlobeView {
     }
     if (this.tacBase) this.tacBase.enabled = t;
 
-    if (t && this.online && this.activeBasemap && !this.tacImagery.has(this.activeBasemap)) {
-      const def = body.layers.find((l) => l.id === this.activeBasemap);
+    // Tactical restyles the chosen real layer, or the body default when "illustrated" is chosen.
+    const tacId = body.layers.some((l) => l.id === this.activeBasemap) ? this.activeBasemap : body.defaultLayer;
+    if (t && this.online && !this.tacImagery.has(tacId)) {
+      const def = body.layers.find((l) => l.id === tacId);
       const layer = createLayer(def, { transform: this.tacStyle, cacheTag: 'tactical' });
       this.tacImagery.set(def.id, layer);
       this.insertBeforeSlot(layer);
     }
-    this.tacImagery.forEach((layer, id) => { layer.enabled = t && id === this.activeBasemap; });
+    this.tacImagery.forEach((layer, id) => { layer.enabled = t && id === tacId; });
     if (this.tacContours) this.tacContours.enabled = t;
     this.grid.enabled = t;
     this.zones.enabled = t;
@@ -165,11 +191,22 @@ export class GlobeView {
 
   /* ---------------- markers ---------------- */
   markerImage(color, size = 64) {
-    if (this.markerCache[color]) return this.markerCache[color];
+    const key = (this.simple ? 'pin' : 'hud') + color;
+    if (this.markerCache[key]) return this.markerCache[key];
     const c = document.createElement('canvas');
     c.width = c.height = size;
     const g = c.getContext('2d');
     const m = size / 2;
+    if (this.simple) {
+      // friendly round pin: soft shadow, white rim, solid colour
+      g.shadowColor = 'rgba(0,0,0,0.55)'; g.shadowBlur = 6; g.shadowOffsetY = 2;
+      g.fillStyle = '#ffffff';
+      g.beginPath(); g.arc(m, m, m * 0.5, 0, Math.PI * 2); g.fill();
+      g.shadowColor = 'transparent';
+      g.fillStyle = color;
+      g.beginPath(); g.arc(m, m, m * 0.38, 0, Math.PI * 2); g.fill();
+      return (this.markerCache[key] = new WorldWind.ImageSource(c));
+    }
     g.translate(m, m);
     g.strokeStyle = color; g.globalAlpha = 0.35; g.lineWidth = 2;
     g.beginPath(); g.arc(0, 0, m * 0.82, 0, Math.PI * 2); g.stroke();
@@ -178,21 +215,46 @@ export class GlobeView {
     g.fillStyle = 'rgba(0,0,0,0.75)'; g.fillRect(-s, -s, s * 2, s * 2);
     g.lineWidth = 3; g.strokeStyle = color; g.strokeRect(-s, -s, s * 2, s * 2);
     g.fillStyle = color; g.fillRect(-s * 0.4, -s * 0.4, s * 0.8, s * 0.8);
-    return (this.markerCache[color] = new WorldWind.ImageSource(c));
+    return (this.markerCache[key] = new WorldWind.ImageSource(c));
+  }
+
+  /**
+   * Simple view: round pins with names only on hover / selection, north-up
+   * camera with no tilt, and range limits that keep the planet in view.
+   */
+  setSimple(on) {
+    this.simple = on;
+    if (this.siteItems) this.setSites(this.siteItems);
+    this.applyLighting();
+    this.wwd.redraw();
+  }
+
+  /** Simple view lights the side facing you (no night side); Detailed shows real day/night. */
+  applyLighting() {
+    if (this.atmosphere) this.atmosphere.time = this.simple ? null : new Date();
+  }
+
+  /** Names always in Detailed view; in Simple view only for the hovered / selected site. */
+  refreshLabels() {
+    this.placemarks.forEach((pm, id) => {
+      const show = !this.simple || pm === this.highlighted || id === this.selectedId;
+      pm.label = show ? pm.userProperties.site.name.toUpperCase() : null;
+    });
   }
 
   /** sites: array of { site, color } */
   setSites(items) {
+    this.siteItems = items;
     this.siteLayer.removeAllRenderables();
     this.placemarks.clear();
     this.rebuildZones(items.map((i) => i.site));
     items.forEach(({ site, color }) => {
       const attrs = new WorldWind.PlacemarkAttributes(null);
       attrs.imageSource = this.markerImage(color);
-      attrs.imageScale = 0.5;
+      attrs.imageScale = this.simple ? 0.45 : 0.5;
       attrs.imageOffset = new WorldWind.Offset(WorldWind.OFFSET_FRACTION, 0.5, WorldWind.OFFSET_FRACTION, 0.5);
       attrs.labelAttributes.color = WorldWind.Color.WHITE;
-      attrs.labelAttributes.font = new WorldWind.Font(13, 'normal', 'normal', '600', 'Rajdhani, sans-serif');
+      attrs.labelAttributes.font = new WorldWind.Font(this.simple ? 15 : 13, 'normal', 'normal', '600', 'Rajdhani, sans-serif');
       attrs.labelAttributes.offset = new WorldWind.Offset(WorldWind.OFFSET_FRACTION, 0.5, WorldWind.OFFSET_FRACTION, 1.6);
       attrs.drawLeaderLine = false;
       const hi = new WorldWind.PlacemarkAttributes(attrs);
@@ -207,6 +269,8 @@ export class GlobeView {
       this.siteLayer.addRenderable(pm);
       this.placemarks.set(site.id, pm);
     });
+    this.highlighted = null;
+    this.refreshLabels();
     this.wwd.redraw();
   }
 
@@ -237,6 +301,7 @@ export class GlobeView {
       this.pulseLayer.addRenderable(this.pulse);
     }
     this.pulseLayer.pickEnabled = false;
+    this.refreshLabels();
     this.wwd.redraw();
   }
 
@@ -287,6 +352,7 @@ export class GlobeView {
     if (this.highlighted) this.highlighted.highlighted = false;
     this.highlighted = siteId ? this.placemarks.get(siteId) || null : null;
     if (this.highlighted) this.highlighted.highlighted = true;
+    this.refreshLabels();
     this.wwd.redraw();
   }
 
@@ -296,11 +362,11 @@ export class GlobeView {
   /** Range in metres for a "site close-up", scaled to the body. */
   siteRange() { return this.radius * 0.35; }
 
-  flyTo(lat, lon, range = this.siteRange(), done) {
+  flyTo(lat, lon, range = this.siteRange(), done, travelMs = 2200) {
     this.markInteraction();
     this.cancelAnimation();
     const anim = new WorldWind.GoToAnimator(this.wwd);
-    anim.travelTime = 2200;
+    anim.travelTime = travelMs;
     this.animator = anim;
     anim.goTo(new WorldWind.Position(lat, lon, range), done);
   }
@@ -332,6 +398,46 @@ export class GlobeView {
   }
 
   setAutoRotate(on) { this.autoRotate = on; if (on) this.lastInteraction = 0; }
+
+  /** True when the globe is actually turning right now (auto-rotate on and not paused by user input). */
+  isAutoRotating() { return this.autoRotate && performance.now() - this.lastInteraction > CAMERA.idleResumeMs; }
+
+  /**
+   * Smoothly zoom back out to the home distance and straighten any tilt/heading,
+   * keeping whatever spot is in the middle. Resolves at once when already there.
+   */
+  pullBackToHome(ms = 650) {
+    const nav = this.wwd.navigator;
+    const target = CAMERA.homeRangeRadii * this.radius;
+    const heading = ((nav.heading + 540) % 360) - 180;
+    if (Math.abs(nav.range / target - 1) < 0.03 && Math.abs(nav.tilt) < 0.5 && Math.abs(heading) < 0.5) return Promise.resolve();
+    this.cancelAnimation();
+    const from = { range: nav.range, tilt: nav.tilt, heading };
+    const t0 = performance.now();
+    const ease = (k) => (k < 0.5 ? 2 * k * k : 1 - Math.pow(-2 * k + 2, 2) / 2);
+    return new Promise((resolve) => {
+      const step = (now) => {
+        const k = Math.min(1, (now - t0) / ms), e = ease(k);
+        // interpolate range geometrically so the zoom speed feels even
+        nav.range = from.range * Math.pow(target / from.range, e);
+        nav.tilt = from.tilt * (1 - e);
+        nav.heading = from.heading * (1 - e);
+        this.wwd.redraw();
+        if (k < 1) requestAnimationFrame(step); else resolve();
+      };
+      requestAnimationFrame(step);
+    });
+  }
+
+  /** Point the camera straight down at (lat, lon) instantly, keeping the zoom. */
+  lookAt(lat, lon) {
+    const nav = this.wwd.navigator;
+    this.cancelAnimation();
+    nav.lookAtLocation.latitude = lat;
+    nav.lookAtLocation.longitude = lon;
+    nav.heading = 0; nav.tilt = 0;
+    this.wwd.redraw();
+  }
 
   /* ---------------- input & loop ---------------- */
   markInteraction() { this.lastInteraction = performance.now(); }
@@ -402,11 +508,58 @@ export class GlobeView {
     this.emit('camera', { range: nav.range, lat: nav.lookAtLocation.latitude, lon: nav.lookAtLocation.longitude });
   }
 
+  /** Simple view: ease tilt / heading back to a straight-down, north-up view and keep the range in bounds. */
+  applySimpleNav(dt) {
+    const nav = this.wwd.navigator;
+    const k = Math.min(1, dt * 6);
+    let changed = false;
+    if (Math.abs(nav.tilt) > 0.05) { nav.tilt -= nav.tilt * k; changed = true; } else if (nav.tilt) { nav.tilt = 0; changed = true; }
+    if (nav.roll) { nav.roll = 0; changed = true; }
+    const h = ((nav.heading + 540) % 360) - 180;
+    if (Math.abs(h) > 0.05) { nav.heading = h - h * k; changed = true; } else if (nav.heading) { nav.heading = 0; changed = true; }
+    const r = this.radius;
+    const lo = SIMPLE_NAV.minRangeRadii * r, hi = SIMPLE_NAV.maxRangeRadii * r;
+    if (nav.range < lo) { nav.range = lo; changed = true; }
+    if (nav.range > hi) { nav.range = hi; changed = true; }
+    if (changed) this.wwd.redraw();
+  }
+
+  /** Image tiles still being downloaded by the visible layers. */
+  tilesPending() {
+    let n = 0;
+    this.wwd.layers.forEach((l) => { if (l.enabled && l.currentRetrievals) n += Object.keys(l.currentRetrievals).length; });
+    return n;
+  }
+
+  /**
+   * Resolves once the globe has drawn its imagery (no tile downloads for a few
+   * checks in a row), or after maxMs so a slow network never blocks the app.
+   */
+  whenSettled(maxMs = 3000) {
+    return new Promise((resolve) => {
+      const t0 = performance.now();
+      let calm = 0;
+      const check = () => {
+        this.wwd.redraw();
+        calm = this.tilesPending() === 0 ? calm + 1 : 0;
+        if (calm >= 3 || performance.now() - t0 > maxMs) resolve();
+        else setTimeout(check, 100);
+      };
+      setTimeout(check, 150);
+    });
+  }
+
+  /** Gently re-centre the camera on a point, keeping the current zoom. */
+  centreOn(lat, lon) {
+    this.flyTo(lat, lon, this.wwd.navigator.range, undefined, SIMPLE_NAV.centreOnClickMs);
+  }
+
   startLoop() {
     let prev = performance.now();
     let lastCamEmit = 0;
     const tick = (now) => {
       const dt = (now - prev) / 1000; prev = now;
+      if (this.body && this.simple) this.applySimpleNav(dt);
       if (this.body && this.autoRotate && now - this.lastInteraction > CAMERA.idleResumeMs) {
         const nav = this.wwd.navigator;
         nav.lookAtLocation.longitude = ((nav.lookAtLocation.longitude + CAMERA.autoRotateDegPerSec * dt + 540) % 360) - 180;
