@@ -355,7 +355,7 @@ export function renderTempPanel(m, h) {
           <span class="jump-body">VIEW ON</span><span class="jump-name">${BODIES[b].label}</span><span class="jump-arrow">▸</span></button>`).join('')}</div>`
       : `<div class="temp-summary" id="temp-summary"></div>`}
     ${m.gridError ? `<div class="temp-hint err">${esc(m.gridError)}</div>` : ''}
-    ${!isEarth ? '<div class="temp-note">Moon/Mars temperatures: placeholder model. Replace <code>data/*_grid.csv</code> with Diviner / MCD data.</div>' : ''}` : '';
+    ${!isEarth && m.grid ? `<div class="temp-note${m.grid.placeholder ? ' warn' : ''}">${BODIES[m.body].label} data: ${esc(m.grid.sourceLabel)}${m.grid.placeholder ? ' (not measured data)' : ''} · surface temperature, 2° grid</div>` : ''}` : '';
 
   box.innerHTML = refHtml + controls;
   box.querySelectorAll('[data-stat]').forEach((b) => b.addEventListener('click', () => h.onStat(b.dataset.stat)));

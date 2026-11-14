@@ -83,7 +83,7 @@ const tempHandlers = {
 /** Re-render the panel and the globe overlays for the current body. */
 function refreshTemp() {
   const t = state.temp;
-  ui.renderTempPanel({ ...t, body: state.body }, tempHandlers);
+  ui.renderTempPanel({ ...t, body: state.body, grid: t.grids[state.body] }, tempHandlers);
   globe.setReference(state.body === 'earth' && t.ref ? { ...t.ref, label: t.ref.label.toUpperCase() } : null);
   drawHeat();
 }
@@ -137,7 +137,7 @@ async function loadGrids() {
       state.temp.grids[body] = await temp.loadGrid(body);
     } catch (err) {
       console.error(err);
-      state.temp.gridError = `Couldn't load ${temp.GRID_FILES[body]}`;
+      state.temp.gridError = `Couldn't load the ${body} temperature grid`;
     }
   }
   refreshTemp();

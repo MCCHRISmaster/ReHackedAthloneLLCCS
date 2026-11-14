@@ -21,7 +21,15 @@ Local `main` (not yet pushed) has `heat-map` and `Graphical_Elements` merged in.
   - `globe.js`: `setHeatmap(canvas)` drapes a full-sphere `SurfaceImage`; `setReference(pos)` places the Earth crosshair; clicking bare ground emits `ground`
   - `main.js`: `state.temp` holds the reference and settings; clicking Earth (ground or a site) fetches the reference temperature
   - `ui.js`: `renderTempPanel` draws the TEMPERATURE MATCH panel; a TEMP readout sits in the bottom bar
-  - Grids: `data/moon_grid.csv` and `data/mars_grid.csv` in the template format. Replace them with real Diviner / MCD data.
+  - Grids: the globe loads the **real** grids from the repo-root `moon_data/moon_grid.csv` (LRO Diviner) and
+    `mars_data/mars_grid.csv` (Mars Climate Database 6.2). If those aren't reachable, it falls back to the placeholder model in `data/`. The panel shows which source is in use.
+  - Planet switching is the teammate's carousel at the bottom centre (`Q`/`E`, ◀/▶, or `1`/`2`/`3`).
+
+### Data branch (`csv_data_collection`, which includes `l_branch`): merged into local `main`
+- `moon_data/build_moon_grid.py` → `moon_grid.csv` (LRO Diviner, `source_id` `diviner_gcp_2017`), 16,200 cells, passes `csv_to_grid.py --check`
+- `mars_data/build_mars_grid.py` → `mars_grid.csv` (MCD 6.2, `mcd_v6_2`), 16,200 cells, passes the check
+- `earth_data/build_earth_grid.py` → `earth_grid.csv` (NASA POWER): **mostly empty cells so far**, so not used yet. It's needed for the reverse search.
+- **This resolves the "placeholder Moon/Mars data" weakness described above.**
 - Run: `node prototype/server.js analog-atlas/analog-atlas 8002`, then open http://localhost:8002.
 
 ## The challenge

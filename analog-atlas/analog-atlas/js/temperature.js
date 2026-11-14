@@ -4,7 +4,17 @@
  * Pure data + canvas code. No WorldWind here.
  */
 
-export const GRID_FILES = { moon: 'data/moon_grid.csv', mars: 'data/mars_grid.csv' };
+// Real grids from the data team (repo-root moon_data/ and mars_data/), with the
+// placeholder model in data/ as a fallback when the page is served on its own.
+export const GRID_FILES = {
+  moon: ['../../moon_data/moon_grid.csv', 'data/moon_grid.csv'],
+  mars: ['../../mars_data/mars_grid.csv', 'data/mars_grid.csv'],
+};
+const SOURCE_NAMES = {
+  diviner_gcp_2017: 'LRO Diviner (measured)',
+  mcd_v6_2: 'Mars Climate Database 6.2',
+  model_placeholder: 'placeholder model',
+};
 export const STATS = {
   mean: { col: 'temp_mean_c', label: 'AVG' },
   high: { col: 'temp_high_c', label: 'HIGH' },
@@ -59,8 +69,10 @@ export function gridFromCSV(text, body) {
   const g = { mean: new Float32Array(ROWS * COLS).fill(NaN) };
   g.high = g.mean.slice(); g.low = g.mean.slice();
   let cells = 0;
+  const sources = new Set();
   for (const r of parseCSV(text)) {
     if ((r.body || '').toLowerCase() !== body) continue;
+    if (r.source_id) sources.add(r.source_id);
     const row = (90 - RES / 2 - Number(r.lat)) / RES, col = (Number(r.lon) + 180 - RES / 2) / RES;
     if (!Number.isInteger(row) || !Number.isInteger(col) || row < 0 || row >= ROWS || col < 0 || col >= COLS) continue;
     const i = row * COLS + col;
@@ -68,13 +80,21 @@ export function gridFromCSV(text, body) {
     cells++;
   }
   g.cells = cells;
+  g.sourceIds = [...sources];
+  g.sourceLabel = g.sourceIds.map((s) => SOURCE_NAMES[s] || s).join(', ') || 'unknown source';
+  g.placeholder = g.sourceIds.includes('model_placeholder');
   return g;
 }
 
+/** Load the first grid file that exists for this body. */
 export async function loadGrid(body) {
-  const res = await fetch(GRID_FILES[body]);
-  if (!res.ok) throw new Error(`${GRID_FILES[body]}: HTTP ${res.status}`);
-  return gridFromCSV(await res.text(), body);
+  for (const path of GRID_FILES[body]) {
+    const res = await fetch(path).catch(() => null);
+    if (!res || !res.ok) continue;
+    const g = gridFromCSV(await res.text(), body);
+    if (g.cells) { g.path = path; return g; }
+  }
+  throw new Error(`no ${body} grid found (${GRID_FILES[body].join(' or ')})`);
 }
 
 /* ---------------- Earth reference (NASA POWER) ---------------- */

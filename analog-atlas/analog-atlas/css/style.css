@@ -333,6 +333,7 @@ body.tactical .vignette { background: radial-gradient(ellipse at center, transpa
 .temp-summary b { color: var(--text); }
 .temp-note { font-size: 11px; color: var(--muted); line-height: 1.35; }
 .temp-note code { font-family: var(--font-mono); color: var(--accent-dim); }
+.temp-note.warn { color: #ffb340; }
 .readout-temp { min-width: 200px; }
 
 /* keep the bottom bar on one line */
