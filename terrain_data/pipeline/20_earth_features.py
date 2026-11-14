@@ -387,6 +387,12 @@ def main() -> None:
              "solar_idx", "temp_mean_c", "temp_high_c", "temp_low_c"]
     text = {"country", "admin_region", "volcano_nearest_type", "crater_nearest_name", "cave_nearest_type"}
     land = land_pct >= 25
+    # island and coast cells with 1 to 25 percent land: kept out of the ranking CSV (BUILD_PROMPT 4) but saved
+    # for looking up named sites such as Tenerife or Lanzarote, which would otherwise have no features
+    some = np.nan_to_num(land_pct, nan=0) >= 1
+    np.savez_compressed(WORK / "earth_features_all.npz",
+                        **{k: np.where(some, a.astype(float), np.nan) for k, a in cols.items()
+                           if isinstance(a, np.ndarray) and a.dtype.kind == "f" and k != "land_pct"})
     data = {}
     for k in order:
         a = cols.get(k)

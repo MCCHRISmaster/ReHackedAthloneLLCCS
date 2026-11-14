@@ -134,3 +134,8 @@ Run Python as `terrain_data/.venv/Scripts/python.exe`. Model was switched to Son
 - out/mars_features.csv: MOLA megt16 (note: file is megt90n000eb.img, not fb), Robbins crater DB through the USGS pygeoapi (sorted by diameter, 20k per page, 5 km+), TES night thermal inertia (global_ti_night_2007.img; dust_cover_idx proxy), Odyssey GRS 5x5 H2O (valid only equatorward of ~60 deg; poles left blank in weh_pct; water_idx = max(scaled weh, latitude proxy)), SIM 3292 geology shapefile (809 MB zip, 8 unit groups, every cell sums to 100 percent), lavatube_idx PROXY (0.6 volcanic share + 0.4 closeness to Tharsis/Olympus skylight volcanoes).
 - NOT DONE: Mars cave catalog (astropedia host down; astrogeology.usgs.gov/search/map/mars_cave_catalog resets). Mars dust storms (MDAD, cut-list item). TES albedo.
 - curated/targets_mars.csv: 25 Mars targets; out/targets.csv has 60 rows (35 Moon + 25 Mars).
+- 2026-11-14 16:43 curated tables enriched; 24 demo images saved locally
+- 2026-11-14 16:48 earth GLiM: 0.5 deg grid, 16 classes, 23369 1-degree cells covered
+- 2026-11-14 16:48 earth volcanoes: 1214 Holocene volcanoes from GVP
+- 2026-11-14 16:49 earth features built; sources ['etopo2022', 'glim_v1', 'gvp_votw', 'curated_caves;curated_impacts', 'worldclim_2_1', 'natural_earth', 'earth_climate_proxy']; missing ['temperature (run 21_earth_temperature.py)']
+- 2026-11-14 16:50 curated tables enriched; 24 demo images saved locally
