@@ -351,13 +351,13 @@ export const WEIGHT_PRESETS = {
   rover: { temp: 15, press: 5, terrain: 35, sunwind: 20, soil: 15, air: 5, rad: 5 },
 };
 export const PRESET_WHY = {
-  human: ['🌡️ high: suits and habitats live in this heat and cold', '⏲️ high: air pressure decides life support and suit design',
-    '☢️ medium: radiation dose limits how long crews can stay (NASA career limit)',
-    '🫧 medium: oxygen, CO₂, ozone and dust affect suits and UV exposure', '☀️ medium: sunlight for power and warmth',
-    '⛰️ 🪨 low: crews walk short distances; soil chemistry matters later (building, resources)'],
-  rover: ['⛰️ high: slopes, roughness and craters decide where it can drive', '☀️ medium: solar power, dust on panels, wind loads',
-    '🪨 medium: soil sets traction and wheel wear', '🌡️ medium: batteries and electronics, helped by heaters',
-    '⏲️ 🫧 ☢️ low: machines do not breathe, and electronics can be radiation-hardened'],
+  human: ['Temperature, high: suits and habitats live in this heat and cold', 'Pressure, high: air pressure decides life support and suit design',
+    'Radiation, medium: dose limits how long crews can stay (NASA career limit)',
+    'Air, medium: oxygen, CO₂, ozone and dust affect suits and UV exposure', 'Sun & wind, medium: sunlight for power and warmth',
+    'Terrain and soil, low: crews walk short distances; soil chemistry matters later (building, resources)'],
+  rover: ['Terrain, high: slopes, roughness and craters decide where it can drive', 'Sun & wind, medium: solar power, dust on panels, wind loads',
+    'Soil, medium: sets traction and wheel wear', 'Temperature, medium: batteries and electronics, helped by heaters',
+    'Pressure, air and radiation, low: machines do not breathe, and electronics can be radiation-hardened'],
 };
 export const DEFAULT_WEIGHTS = WEIGHT_PRESETS.human;
 

@@ -52,13 +52,13 @@ export const RAIL = [
 const RAIL_BY = Object.fromEntries(RAIL.map((r) => [r.key, r]));
 export const HEAT_KEYS = ['combo', 'temp', 'terrain', 'sunwind', 'soil', 'air', 'rad'];
 const WEIGHT_PARTS = [
-  { key: 'temp', label: '🌡️ Temperature' },
-  { key: 'press', label: '⏲️ Pressure' },
-  { key: 'terrain', label: '⛰️ Terrain' },
-  { key: 'sunwind', label: '☀️ Sun & wind' },
-  { key: 'soil', label: '🪨 Ground & soil' },
-  { key: 'air', label: '🫧 Air & gases' },
-  { key: 'rad', label: '☢️ UV & radiation' },
+  { key: 'temp', label: 'Temperature' },
+  { key: 'press', label: 'Pressure' },
+  { key: 'terrain', label: 'Terrain' },
+  { key: 'sunwind', label: 'Sun & wind' },
+  { key: 'soil', label: 'Ground & soil' },
+  { key: 'air', label: 'Air & gases' },
+  { key: 'rad', label: 'UV & radiation' },
 ];
 
 let openView = null;   // which symbol's details the right panel shows
@@ -81,8 +81,8 @@ export function renderMatchBar(m, { onPick, onGoRef, onGoBest }) {
   }).join('');
   el.innerHTML = `<span class="mb-title">LOCATION MATCH</span>${chips}
     <span class="mb-sep"></span>
-    <button class="mb-go" id="mb-go-ref" title="Fly to your selected point" ${m.ref ? '' : 'disabled'}>📍 SELECTED POINT</button>
-    <button class="mb-go" id="mb-go-best" title="Fly to the best match on ${m.active ? name(m.active) : 'the selected world'}" ${m.ref ? '' : 'disabled'}>🎯 BEST MATCH</button>`;
+    <button class="mb-go" id="mb-go-ref" title="Fly to your selected point" ${m.ref ? '' : 'disabled'}>SELECTED POINT</button>
+    <button class="mb-go" id="mb-go-best" title="Fly to the best match on ${m.active ? name(m.active) : 'the selected world'}" ${m.ref ? '' : 'disabled'}>BEST MATCH</button>`;
   el.querySelectorAll('[data-target]').forEach((b) => b.addEventListener('click', () => onPick(b.dataset.target)));
   el.querySelector('#mb-go-ref').addEventListener('click', onGoRef);
   el.querySelector('#mb-go-best').addEventListener('click', onGoBest);
@@ -111,7 +111,7 @@ export function renderLeft(m, h) {
       </div>`;
   }
   const sym = m.heatLabel || heatLabel(m.metric);
-  const showing = `<div class="ml-showing">Maps show: <b>${sym.icon} ${esc(sym.name.toUpperCase())}</b> <span>(change with the symbols on the right)</span></div>`;
+  const showing = `<div class="ml-showing">Maps show: <b>${esc(sym.name.toUpperCase())}</b> <span>(change with the symbols on the right)</span></div>`;
 
   const others = Object.keys(BODIES).filter((b) => BODIES[b].enabled && b !== m.current);
   const cards = others.map((b) => {
@@ -128,7 +128,7 @@ export function renderLeft(m, h) {
       pin = `<span class="mm2-pin best" style="left:${p.x * 100}%;top:${p.y * 100}%"></span>`;
       scores = `<div class="mm2-scores">${HEAT_KEYS.filter((k) => k !== 'combo').map((k) => {
         const v = r.best.scores[k];
-        return `<div class="mm2-score ${k === m.metric ? 'on' : ''} ${scoreClass(v)}"><span>${RAIL_BY[k].icon} ${RAIL_BY[k].short}</span><b>${pct(v)}</b></div>`;
+        return `<div class="mm2-score ${k === m.metric ? 'on' : ''} ${scoreClass(v)}"><span>${RAIL_BY[k].short}</span><b>${pct(v)}</b></div>`;
       }).join('')}</div>`;
     } else {
       scores = `<div class="mm2-note">${m.ref ? 'No data' : 'Pick a location to see matches'}</div>`;
@@ -148,7 +148,7 @@ export function renderLeft(m, h) {
 
   // mission-site picker (Moon & Mars targets from data/targets_*.csv)
   const sites = m.sites || [];
-  const picker = sites.length ? `<label class="ml-picker"><span>🚀 JUMP TO A MISSION SITE</span>
+  const picker = sites.length ? `<label class="ml-picker"><span>JUMP TO A MISSION SITE</span>
       <select id="ml-site"><option value="">Choose a Moon or Mars site…</option>
         ${['moon', 'mars'].map((b) => {
           const list = sites.filter((s) => s.body === b);
@@ -187,7 +187,7 @@ export function renderAdvanced(m, h) {
       <button class="chip" id="adv-grid" aria-pressed="${m.gridLines}">2° GRID LINES</button></div>
     <div class="adv-row"><span class="adv-lbl">DETAIL</span>
       <button class="chip" id="adv-probe" ${m.ref ? '' : 'disabled'}>MULTI-METRIC PROBE (SAMPLE)</button></div>
-    <p class="adv-note">Combo weights are set with the sliders under 🎛️ on the right. Pressure is compared on a log scale (0% at 1000× apart).</p>`;
+    <p class="adv-note">Combo weights are set with the sliders under COMBO on the right. Pressure is compared on a log scale (0% at 1000× apart).</p>`;
   el.querySelectorAll('[data-stat]').forEach((b) => b.addEventListener('click', () => h.onStat(b.dataset.stat)));
   el.querySelectorAll('[data-scale]').forEach((b) => b.addEventListener('click', () => h.onScale(b.dataset.scale)));
   const range = el.querySelector('#adv-range');
@@ -396,7 +396,7 @@ function comboDetail(ref, r, weights, scale = 'human') {
       </div>`;
   }).join('');
   const preset = WEIGHT_PRESETS[scale], custom = Object.keys(preset).some((k) => preset[k] !== weights[k]);
-  return `<div class="cw-preset"><b>${scale === 'rover' ? '🚙 ROVER' : '🧑‍🚀 HUMAN'} MISSION PRESET</b>${custom ? ' <span>(adjusted)</span>' : ''}
+  return `<div class="cw-preset"><b>${scale === 'rover' ? 'ROVER' : 'HUMAN'} MISSION PRESET</b>${custom ? ' <span>(adjusted)</span>' : ''}
       <ul>${PRESET_WHY[scale].map((x) => `<li>${esc(x)}</li>`).join('')}</ul>
       <span class="cw-preset-note">Switch HUMAN / ROVER in Advanced options; RESET returns to the preset.</span></div>
     <p class="md-text">The combo mixes every measurement. Drag the sliders to decide what matters most for your mission; the heat maps, pins and % update when you let go.</p>
@@ -448,7 +448,7 @@ function metricDetail(k, ref, r, stat, best) {
         ${Number.isNaN(ratio) ? '' : `The dose there is about <b>${Math.round(ratio).toLocaleString()}×</b> the dose here.`}</p>
       <p class="md-warn"><b>Assumption:</b> UV-C and the cosmic-ray dose count only ¼. No Earth place can ever match them: Earth's ozone removes all UV-C, and its air and magnetic field keep
         the dose at 0.3–7 mSv a year, against ~${r.target === 'moon' ? '500 on the Moon' : '210–300 on Mars'}. UV-B counts in full because Earth places really differ on it: high, dry deserts
-        (Atacama, Altiplano, Tibet) get the most and come within a few times of Mars. What can't be matched here is tested elsewhere (🧪 below) and built into the base (🏗️).</p>
+        (Atacama, Altiplano, Tibet) get the most and come within a few times of Mars. What can't be matched here is tested elsewhere (Future tests, below) and built into the base (Future base).</p>
       <p class="md-src">${here}: ${esc(RAD_SOURCE[ref.body])}<br>${there}: ${esc(RAD_SOURCE[r.target])}</p>`;
   }
   if (k === 'air') {
@@ -466,7 +466,7 @@ function metricDetail(k, ref, r, stat, best) {
         Gases are compared on a log scale (0% at ${10 ** 3}× apart for O₂ and CO₂), because they span from Earth's 21 kPa of oxygen to the Moon's vacuum.</p>
       <p class="md-warn"><b>Assumption:</b> oxygen, CO₂ and ozone count only ¼ as much as dust &amp; haze. No Earth place can ever truly match them:
         everywhere on Earth has about 21 kPa of oxygen, 40 Pa of CO₂ and 300 Dobson units of ozone, while ${r.target === 'moon' ? 'the Moon has none' : 'Mars has ~1 Pa of oxygen, ~13× Earth’s CO₂ and almost no ozone'}.
-        Scoring them in full would only lower every Earth place by the same amount. Instead they are treated as things a future ${name(r.target)} base must provide for itself (see 🏗️ below).
+        Scoring them in full would only lower every Earth place by the same amount. Instead they are treated as things a future ${name(r.target)} base must provide for itself (see Future base, below).
         Dust &amp; haze counts in full because Earth places really differ on it, from clear polar air to Saharan dust.</p>
       <p class="md-src">${here}: ${esc(GAS_SOURCE[ref.body])}<br>${there}: ${esc(GAS_SOURCE[r.target])}</p>`;
   }
@@ -641,16 +641,16 @@ export function renderMatchPanel(m, h) {
       <div class="mp-big" style="--c:${tint(b.overall, 1)}"><b>${pct(b.overall)}</b><span>${b.closestOnly ? 'NO MATCH' : 'MATCH!'}</span></div>
       <div class="mp-where">${b.closestOnly ? `Nothing on ${name(r.target)} is within range. Closest spot is ${Math.round(b.gap)}°C apart:` : ''}
         ${fmtLat(b.lat)} · ${fmtLon(b.lon)} vs ${esc(ref.label)} (${name(ref.body)})</div>
-      <button class="mini-btn wide mp-go">🎯 GO TO THIS SPOT ON ${BODIES[r.target].label} ▸</button>
+      <button class="mini-btn wide mp-go">GO TO THIS SPOT ON ${BODIES[r.target].label} ▸</button>
       <div class="mt-detail" style="--edge:${tint(viewScore, 0.9)}">
-        <h4>${sym.icon} ${sym.name.toUpperCase()}${view === 'grid' ? '' : ` <span class="mt-score" style="color:${tint(viewScore, 1)}">${pct(viewScore)}</span>`}</h4>${body}
+        <h4>${sym.name.toUpperCase()}${view === 'grid' ? '' : ` <span class="mt-score" style="color:${tint(viewScore, 1)}">${pct(viewScore)}</span>`}</h4>${body}
       </div>
-      <div class="mp-section rover"><h4>🚙 ROVER DEVELOPMENT</h4>${list(adv.rover)}</div>
-      <div class="mp-section human"><h4>🧑‍🚀 HUMAN DEVELOPMENT</h4>${list(adv.human)}</div>
-      ${adv.tests.here.length || adv.tests.elsewhere.length ? `<div class="mp-section tests"><h4>🧪 FUTURE TESTS</h4>
-        ${adv.tests.here.length ? `<p class="md-text"><b>✅ Can be tested at ${/^Selected point/.test(ref.label) ? 'your chosen spot' : esc(ref.label)}</b></p>${list(adv.tests.here)}` : ''}
+      <div class="mp-section rover"><h4>ROVER DEVELOPMENT</h4>${list(adv.rover)}</div>
+      <div class="mp-section human"><h4>HUMAN DEVELOPMENT</h4>${list(adv.human)}</div>
+      ${adv.tests.here.length || adv.tests.elsewhere.length ? `<div class="mp-section tests"><h4>FUTURE TESTS</h4>
+        ${adv.tests.here.length ? `<p class="md-text"><b>Can be tested at ${/^Selected point/.test(ref.label) ? 'your chosen spot' : esc(ref.label)}</b></p>${list(adv.tests.here)}` : ''}
         <p class="md-text"><b>↗ Needs another place</b> (mostly what no Earth site can match)</p>${list(adv.tests.elsewhere)}</div>` : ''}
-      ${adv.base.length ? `<div class="mp-section base"><h4>🏗️ FUTURE ${BODIES[r.target].label} BASE</h4>
+      ${adv.base.length ? `<div class="mp-section base"><h4>FUTURE ${BODIES[r.target].label} BASE</h4>
         <p class="md-text">What a permanent base at this spot must provide for itself, and what ${/^Selected point/.test(ref.label) ? 'your chosen spot' : esc(ref.label)} can rehearse.</p>${list(adv.base)}</div>` : ''}
       ${m.isSite ? '<button class="mini-btn wide mp-brief">SITE BRIEFING ▸</button>' : ''}
     </div>`;
