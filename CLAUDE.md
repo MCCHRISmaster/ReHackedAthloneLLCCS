@@ -47,6 +47,13 @@ Local `main` (not yet pushed) has `heat-map` and `Graphical_Elements` merged in.
 - Globe: 🏗️ **Future base** section in the match panel: what a Moon/Mars base at the matched spot must provide itself (oxygen, CO₂ as a resource, UV/radiation shielding, pressure, frost) and what the Earth place can rehearse (dust).
 - Globe: 🫧 **Air & gases** rail symbol + combo slider; data-grid groups "Air at the surface", "Whole atmosphere", "Gas at the surface" (the old temperature-based Mars CO₂-frost row now uses MCD frost maps).
 
+### UV and radiation dose (same branch)
+- `terrain_data/pipeline/37_radiation_features.py` → `terrain_data/out/{moon,mars}_radiation.csv`, `earth_radiation_{1,2}deg.csv`: UV-A/B/C, cosmic-ray dose (mSv/yr, /day), days to NASA's 600 mSv career limit.
+  - Earth: NASA POWER `ALLSKY_SFC_UVA/UVB`; UV-C 0; dose estimated from elevation (UNSCEAR / Bouville & Lowder). Mars: UV = MCD sunlight × 8% × Curiosity REMS split (estimate); dose = Curiosity RAD 0.67 mSv/day scaled by air overhead. Moon: UV from geometry; dose = Chang'e-4 1.37 mSv/day.
+  - Mars sunlight comes from `solar_w_m2` in the team grid, read from `origin/main` via git until this branch merges main.
+- Scored: UV-B full weight (Earth places differ), UV-C and dose **¼ weight** (never matchable). Radiation is no longer "never scored"; the caveats say so.
+- Globe: ☢️ **UV & radiation** rail symbol + combo slider, "UV & radiation" data-grid group, and a 🧪 **Future tests** section (what this Earth place can rehearse vs where else: UV-C chambers, NASA Space Radiation Lab/ISS/Artemis, parabolic flights, CHAPEA). The 🏗️ Future base section now gives dose, days to the career limit, regolith/lava-tube cover and a storm shelter.
+
 ## The challenge
 NASA Space Apps 2026: **"Permanent Moon Base Locations and Mars."** Use open NASA and other space-agency data
 to find and describe Earth places that are good stand-ins ("analogs") for candidate Moon-base and Mars

@@ -2,7 +2,7 @@
 skipped, and the feature builders skip an existing output unless --force is given.
 
     terrain_data/.venv/Scripts/python.exe terrain_data/pipeline/run_all.py --phase all
-    ... --phase moon | earth | mars | soil | gases | curated | score | validate
+    ... --phase moon | earth | mars | soil | gases | radiation | curated | score | validate
     ... --phase all --force        rebuild every output (downloads stay cached in raw/)
 
 Order matters: curated tables need Earth features only for scoring, and scoring needs everything else.
@@ -25,11 +25,12 @@ PHASES = {
     "mars":     ["30_mars_features.py"],
     "soil":     ["35_soil_features.py"],
     "gases":    ["36_gas_features.py"],
+    "radiation": ["37_radiation_features.py"],
     "curated":  ["41_verify_coords.py", "40_curated_tables.py"],
     "score":    ["50_score.py", "60_export.py"],
     "validate": ["70_validate.py"],
 }
-ORDER = ["setup", "moon", "earth", "mars", "soil", "gases", "curated", "score", "validate"]
+ORDER = ["setup", "moon", "earth", "mars", "soil", "gases", "radiation", "curated", "score", "validate"]
 FORCEABLE = {"10_moon_features.py", "20_earth_features.py", "30_mars_features.py", "35_soil_features.py"}
 
 

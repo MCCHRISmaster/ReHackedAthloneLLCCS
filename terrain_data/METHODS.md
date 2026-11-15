@@ -111,7 +111,37 @@ Four comparisons use them, on log10(1 + value) so the Moon's vacuum still has a 
 
 Next to each gap is what the Earth place can still rehearse. The one gas factor Earth places really differ on, dust and haze, keeps full weight. The scored numbers stay similarity, not suitability; the base section is written from the target's data with fixed rules (`baseFor` in `analog-atlas/.../js/matchui.js`).
 
-What this shows: Mars's air is 95 percent CO2 at about 600 Pa, so its CO2 pressure is about 13 times Earth's while its oxygen (about 1 Pa) and ozone (under 1 Dobson unit, against about 300) are close to the Moon's zero. Oxygen and ozone therefore score near 0 for every Earth place, which is why they count a quarter. Dust and haze is the gas comparison that separates Earth places: the Sahara and Arabia (optical depth 0.4 to 0.8) sit close to Mars's dusty air, while the Antarctic plateau and Arctic (under 0.05) sit close to the Moon. Mars's winter poles show the CO2 cycle: up to a third of the CO2 freezes onto the ground, so nitrogen and argon there rise to over 20 percent of the air.
+What this shows: Mars's air is 95 percent CO2 at about 600 Pa, so its CO2 pressure is about 13 times Earth's while its oxygen (about 1 Pa) and ozone (mostly under 1 Dobson unit, against about 300) are close to the Moon's zero. Oxygen and ozone therefore score near 0 for every Earth place, which is why they count a quarter. Dust and haze is the gas comparison that separates Earth places: the Sahel and Arabia (yearly optical depth about 0.55) and the Sahara and Taklamakan (about 0.3) sit closest to Mars's dusty air, while the Antarctic plateau, Greenland and the Atacama (0.05 or less) sit close to the Moon's zero. Limit: aerosol optical depth counts smoke and pollution as well as dust, so the Amazon's burning season (about 0.35) looks as hazy as a desert. Mars's poles show the CO2 cycle: each winter a quarter to a third of the atmosphere freezes onto the ground (CO2 frost 10 to 11 months a year near the poles), leaving nitrogen and argon behind, so near the poles they average 5 to 10 percent of the air over the year and pass 20 percent in deep winter (2.5 and 1.9 percent at the equator).
+
+Check against measurement: at Gale crater the MCD shares are CO2 95.3, N2 2.52, Ar 1.89, O2 0.16 percent; Curiosity's SAM measured 95.1, 2.59, 1.94 and 0.16 percent (Franz et al. 2017). Ozone is mostly under 1 Dobson unit (median 0.34, up to 2.2 over the winter poles).
+
+### UV light and radiation dose (all bodies, `out/*_radiation*.csv`)
+
+Built by `pipeline/37_radiation_features.py` (`run_all.py --phase radiation`; `--earth k/n` downloads in parallel). Every value is a 24-hour, year-round average at the ground.
+
+| Columns | Earth | Mars | Moon |
+|---|---|---|---|
+| `uva_w_m2`, `uvb_w_m2` | NASA POWER `ALLSKY_SFC_UVA`, `ALLSKY_SFC_UVB` (kWh/m2/day x 1000/24), land boxes | **Estimate**: team `solar_w_m2` (MCD surface sunlight, dust included) x 8 percent UV, split 80 / 15 / 5 percent UV-A / B / C as Curiosity's REMS measured at Gale over five Mars years (Viúdez-Moreiras et al. 2025). An upper estimate: dust absorbs UV slightly more than visible light | Sunlight on flat ground from latitude x 8 percent, split 75 / 19 / 6 percent (top-of-atmosphere spectrum) |
+| `uvc_w_m2` | 0: ozone and oxygen absorb it | as above | as above |
+| `dose_msv_yr`, `dose_msv_day` | **Estimate** of cosmic rays only, from elevation: 240 uSv/yr x [0.205 e^-1.649z + 0.795 e^0.4528z] + 60 uSv/yr x e^1.04z (2 e^0.698z above 2 km), z in km (Bouville and Lowder 1988 via UNSCEAR 2000). Latitude ignored, as in the European cosmic-dose map | Curiosity RAD, 0.67 mSv/day at Gale under about 20 g/cm2 of air (Hassler et al. 2014), scaled by the air overhead with an **assumed** e-folding of 60 g/cm2 | Chang'e-4 LND, 1.369 mSv/day (Zhang et al. 2020), everywhere on the open surface |
+| `career_days` | 600 mSv / daily dose (NASA-STD-3001, 2022 career limit), unshielded | same | same |
+
+Three comparisons use them. **UV-B** counts in full: Earth places really differ on it, about 15 times between the high Arctic (0.04 W/m2) and the Altiplano (0.65; Ireland 0.13), and Earth's high, dry deserts come within 2 to 3 times of Mars. **UV-C** (log10 of 1 + mW/m2) and the **cosmic-ray dose** (log10 mSv a year) count a quarter, by the same rule as oxygen and ozone: no Earth place can ever match them. Earth's surface gets no UV-C at all, and even its highest plateaus get only up to about 7 mSv a year from cosmic rays (most places under 1), against about 210 to 300 on Mars and 500 on the Moon. Radiation used to be a "never scored" caveat; it is now scored at a quarter weight and still named on every card.
+
+What this shows:
+- **Mars's near-UV is no stronger than an Earth desert's** (UV-A about 6 to 10 W/m2 against the Atacama's 18). The danger is the short-wave end: about 1.2 to 1.9 W/m2 of UV-B and 0.4 to 0.6 W/m2 of UV-C that Earth's ozone removes. The Moon gets about 6.6 W/m2 of UV-B and 2 W/m2 of UV-C at the equator.
+- **Radiation is where every analog breaks down most.** Unshielded, a crew reaches NASA's 600 mSv career limit in about 440 days on the Moon, 730 to 1,050 days on Mars (sooner on the volcanoes, later in Hellas), and centuries on Earth.
+- **Earth's best natural rehearsal sites are the high plateaus** (Tibet, the Altiplano, the Antarctic plateau at Concordia): the most UV-B and cosmic rays at Earth's surface. They are still 30 to 70 times short on dose (most places over 100 times), which is why the globe sends radiation tests elsewhere.
+
+Checks: at Gale the estimated dose is 0.71 mSv/day for that 2-degree cell, against RAD's 0.67. The Earth formula gives 0.30 mSv/yr at sea level and about 4 mSv/yr at 4.5 km, close to the 301 to 3,955 uSv/yr range of the European cosmic-dose map (Cinelli et al. 2017). Limits: the Earth dose ignores geomagnetic latitude, which overestimates high tropical plateaus (Altiplano, Tibet) by up to about a factor of 2, and solar storms are not in any of the numbers; the globe names them separately. The Mars UV split is one site's measurement applied everywhere.
+
+### Future tests and future bases (globe match panel)
+
+For every Earth place against its best Moon or Mars match, the globe's match panel adds two sections written from the data with fixed rules (`testsFor` and `baseFor` in `analog-atlas/.../js/matchui.js`):
+- **🧪 Future tests: "can be tested here"** (temperature, terrain, soil, dust, UV-B when the match is good) and **"needs another place"**. The second list is mostly the quarter-weighted factors: UV-C (simulation chambers with UV-C lamps), radiation (particle beams such as NASA's Space Radiation Laboratory, the ISS, Artemis), gravity (parabolic flights, offload rigs), vacuum or thin CO2 air (chambers), and long isolated missions (polar stations, NASA's CHAPEA).
+- **🏗️ Future base:** what a permanent base at the matched spot must provide itself. It covers oxygen, carbon, a radiation dose with days to the career limit, regolith cover (and a lava tube where that spot shows lava-tube potential), a solar-storm shelter, UV-rated materials, and habitat pressure.
+
+This answers the challenge brief directly: it explains what matches and where the analogy breaks down (radiation and gravity always do), combines measurements from Curiosity, Chang'e-4, Mars Odyssey, Lunar Prospector, LRO and MGS with models and reanalyses (Mars Climate Database, NASA POWER), and looks beyond the usual sites (the high plateaus come out as the closest Earth places on UV and dose).
 
 **Why the plan changed.** The build prompt called for NASA NEO products (vegetation, aerosol, snow, MODIS land temperature). NEO no longer serves data files: every data address returns a web page instead. The vegetation, dust and snow features became the climate proxies above, and the MODIS temperature fallback became a full NASA POWER pull. Anyone who restores a real NDVI or aerosol product should replace `barren_pct` and `dust_idx` first.
 
@@ -123,10 +153,10 @@ For each comparison `f`, with Earth value `e` and target value `t` already in co
 match_f = max(0, 1 - |e - t| / range_f)
 ```
 
-If either side has no value, the comparison is skipped. The fixed ranges, the way each body's value is built, and each comparison's dimensions are in `config/features.json` (30 comparisons, 4 from the soil grids and 4 from the gas grids). A comparison can count toward more than one dimension (slope counts for terrain and operations; dryness for habitability and dust).
+If either side has no value, the comparison is skipped. The fixed ranges, the way each body's value is built, and each comparison's dimensions are in `config/features.json` (33 comparisons: 4 from the soil grids, 4 from the gas grids and 3 from the radiation grids). A comparison can count toward more than one dimension (slope counts for terrain and operations; dryness for habitability and dust).
 
 - **Dimension score** = mean of the available matches in that dimension. **Coverage** = available / total in that dimension.
-- **Overall** = sum(weight x dimension score) / sum(weight), over dimensions that have data. It is shown on 0 to 100 and needs at least 10 of the 30 comparisons to have data, otherwise it is shown as unavailable.
+- **Overall** = sum(weight x dimension score) / sum(weight), over dimensions that have data. It is shown on 0 to 100 and needs at least 10 of the 33 comparisons to have data, otherwise it is shown as unavailable.
 - **Presets** (`config/presets.json`): raw similarity (equal weights), crewed mission, base construction, rover landing. The weights are a human decision recorded in the build prompt.
 - **Losses**: each comparison's lost points are `(weight_d / W) x (1 - match) / n_d x 100`, summed over its dimensions, where `W` is the weight of the dimensions with data. Overall plus all lost points is exactly 100. The top three become the plain sentences on the card.
 - **Alternatives** ("cut your losses"): the best-scoring Earth 1-degree land cell for the same target and preset, in the same country, within 1,000 km, and worldwide.

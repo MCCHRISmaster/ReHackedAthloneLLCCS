@@ -30,6 +30,10 @@ The temperature grids for the Moon and Mars (`moon_data/moon_grid.csv`, `mars_da
 
 **Mars Climate Database v6.2, gases** (for `out/mars_gases.csv`). The same LMD web interface the team uses for temperature and pressure (no account; "moderate use", one request at a time). Variables `vmr_co2`, `vmr_n2`, `vmr_ar`, `vmr_o2`, `vmr_co`, `vmr_h2`, `vmr_he`, `vmr_o3` 2 m above the surface, `col_o3`, `dod`, `co2ice`, `surf_h2o_ice`, climatology dust scenario. Cite: Millour, E., et al. (2022), The Mars Climate Database (version 6.1), Europlanet Science Congress, EPSC2022-786, and the MCD team per https://www-mars.lmd.jussieu.fr/ .
 
+**Mars radiation dose.** Curiosity's Radiation Assessment Detector at Gale crater: 0.67 mSv/day dose equivalent at the surface, 0.21 mGy/day absorbed, under about 20 g/cm2 of air. Cite: Hassler, D. M., et al. (2014), Mars' surface radiation environment measured with the Mars Science Laboratory's Curiosity rover, Science, 343, 1244797.
+
+**Mars UV split.** Curiosity's REMS UV sensor over five Mars years at Gale: on average 80 percent UV-A, 15 percent UV-B, 5 percent UV-C. Cite: Viúdez-Moreiras, D., et al. (2025), PNAS (UV and biologically effective dose at Gale crater); summary at https://www.csic.es/ . Used only for the split; the amount comes from the MCD surface sunlight in the team grid (`solar_w_m2`, `mars_data/build_mars_solar.py` on `main`).
+
 **Mars methane.** Curiosity's Tunable Laser Spectrometer, background 0.41 ppb at Gale crater, used as a constant. Cite: Webster, C. R., et al. (2018), Background levels of methane in Mars' atmosphere show strong seasonal variations, Science, 360, 1093-1096.
 
 **Global geologic map of Mars (SIM 3292).** USGS, 1:20,000,000. Public domain. https://pubs.usgs.gov/sim/3292/ . Cite: Tanaka, K. L., Skinner, J. A., Jr., Dohm, J. M., Irwin, R. P., III, Kolb, E. J., Fortezzo, C. M., Platz, T., Michael, G. G., and Hare, T. M. (2014), Geologic map of Mars: U.S. Geological Survey Scientific Investigations Map 3292, scale 1:20,000,000.
@@ -47,6 +51,14 @@ The temperature grids for the Moon and Mars (`moon_data/moon_grid.csv`, `mars_da
 **NASA POWER ozone and aerosol.** Total column ozone (`TO3`, Dobson units) and aerosol optical depth at 550 nm (`AOD_55`), climatology 2001-2025, regional endpoint, 10-degree boxes holding land only. Same credit line as the POWER temperature data above.
 
 **Earth air composition.** Dry air: N2 78.08, O2 20.95, Ar 0.934 percent (standard atmosphere); CO2 about 425 ppm and CH4 about 1,935 ppb, NOAA Global Monitoring Laboratory global means for 2025 (https://gml.noaa.gov/ccgg/trends/). Treated as the same everywhere, which is true to within about 1 percent for the main gases.
+
+**NASA POWER UV.** All-sky surface UV-A (`ALLSKY_SFC_UVA`, 315-400 nm) and UV-B (`ALLSKY_SFC_UVB`, 280-315 nm), climatology 2001-2025, kWh/m2/day, land boxes only. Same credit line as the other POWER data.
+
+**Earth cosmic-ray dose.** Altitude relations of Bouville, A., and Lowder, W. M. (1988), Human population exposure to cosmic radiation, Radiation Protection Dosimetry, 24, 293-299, as summarised in UNSCEAR (2000), Sources and Effects of Ionizing Radiation, Annex B. Checked against Cinelli, G., et al. (2017), European annual cosmic-ray dose: estimation of population exposure, Journal of Maps, 13, 812-821 (301 to 3,955 uSv/yr).
+
+**Lunar radiation dose.** Chang'e-4 Lunar Lander Neutrons and Dosimetry: 1,369 uSv/day dose equivalent. Cite: Zhang, S., et al. (2020), First measurements of the radiation dose on the lunar surface, Science Advances, 6, eaaz1334.
+
+**NASA career dose limit.** 600 mSv effective dose, NASA-STD-3001 Volume 1 (2022). Used only to turn doses into "days to the limit".
 
 **Lunar exosphere** (for the Moon's zero gas columns). Cite: Benna, M., et al. (2015), Variability of helium, neon, and argon in the lunar exosphere as observed by the LADEE NMS instrument, Geophysical Research Letters, 42, 3723-3729.
 
