@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>ESP32 3D Orientation</title>
+  <style>
+    body { margin: 0; overflow: hidden; background: #111; color: #fff; font-family: sans-serif; }
+    #hud { position: absolute; top: 15px; left: 15px; background: rgba(0,0,0,0.6); padding: 12px; border-radius: 8px; }
+  </style>
+</head>
+<body>
+  <div id="hud">
+    <div>Status: <span id="status">Connecting...</span></div>
+    <div>Roll: <span id="roll">0</span>° | Pitch: <span id="pitch">0</span>° | Yaw: <span id="yaw">0</span>°</div>
+  </div>
+
+  <!-- Load Three.js from CDN -->
+  <script src="https://cloudflare.com"></script>
+  <script>
+    // 1. Set up Three.js Scene, Camera, and Renderer
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+    camera.position.z = 5;
+
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    document.body.appendChild(renderer.domElement);
+
+    // 2. Create a 3D Box (Representing your GY-521 board)
+    const geometry = new THREE.BoxGeometry(3, 0.3, 2);
+    const material = new THREE.MeshNormalMaterial(); // Multi-colored faces to easily see orientation
+    const board = new THREE.Mesh(geometry, material);
+    scene.add(board);
+
+    // Add a helper grid for spatial reference
+    const grid = new THREE.GridHelper(10, 10);
+    grid.position.y = -2;
+    scene.add(grid);
+
+    // 3. Connect to ESP32 WebSocket (REPLACE WITH YOUR ESP32 IP)
+    const ws = new WebSocket('ws://192.168.1.XXX:81/');
+
+    ws.onopen = () => {
+      document.getElementById('status').innerText = 'Connected';
+      document.getElementById('status').style.color = '#4caf50';
+    };
+
+    ws.onclose = () => {
+      document.getElementById('status').innerText = 'Disconnected';
+      document.getElementById('status').style.color = '#f44336';
+    };
+
+    ws.onmessage = (event) => {
+      const data = JSON.parse(event.data);
+      
+      // Update HUD text
+      document.getElementById('roll').innerText = data.r.toFixed(1);
+      document.getElementById('pitch').innerText = data.p.toFixed(1);
+      document.getElementById('yaw').innerText = data.y.toFixed(1);
+
+      // Convert degrees to radians for Three.js
+      const degToRad = Math.PI / 180;
+      
+      // Apply rotations (adjust signs/axes depending on how your sensor is mounted)
+      board.rotation.order = 'YXZ';
+      board.rotation.y = data.y * degToRad;  // Yaw
+      board.rotation.x = data.p * degToRad;  // Pitch
+      board.rotation.z = -data.r * degToRad; // Roll
+    };
+
+    // 4. Render Loop
+    function animate() {
+      requestAnimationFrame(animate);
+      renderer.render(scene, camera);
+    }
+    animate();
+
+    // Handle window resizing
+    window.addEventListener('resize', () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+  </script>
+</body>
+</html>
