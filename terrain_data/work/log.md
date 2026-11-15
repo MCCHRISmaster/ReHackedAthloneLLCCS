@@ -206,3 +206,11 @@ Run Python as `terrain_data/.venv/Scripts/python.exe`. Model was switched to Son
 - 2026-11-14 23:21 earth SoilGrids phh2o 0-5 cm: soilgrids_phh2o_0-5cm_3600.tif, 3.85..8.90, 18068 1-degree cells
 - 2026-11-14 23:21 earth SoilGrids bdod 0-5 cm: soilgrids_bdod_0-5cm_3600.tif, 0.34..1.66, 18019 1-degree cells
 - 2026-11-14 23:21 earth SoilGrids cfvo 0-5 cm: soilgrids_cfvo_0-5cm_3600.tif, 0.26..39.22, 18069 1-degree cells
+- 2026-11-15 00:04 mars gases: pp_co2 nan..nan Pa, ozone nan DU max, dust tau nan mean
+- 2026-11-15 00:04 earth gases: TO3 3213 POWER points, 249..270
+- 2026-11-15 00:04 earth gases: AOD_55 900 POWER points, 0..0
+- 2026-11-15 00:20 mars gases: pp_co2 231..1067 Pa, ozone nan DU max, dust tau nan mean
+- 2026-11-15 00:21 earth gases: TO3 98668 POWER points, 242..382
+- 2026-11-15 00:21 earth gases: AOD_55 30500 POWER points, 0..1.05
+- 2026-11-15 00:23 earth gases: POWER TO3/AOD_55 boxes downloaded 160, failed 0
+- 2026-11-15 00:23 earth gases: POWER TO3/AOD_55 boxes downloaded 160, failed 0

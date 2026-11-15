@@ -362,6 +362,16 @@ async function loadTerrain() {
       console.warn('soil data not loaded, soil score left out:', err.message);
     }
   }
+  // air & gases (same feature store)
+  for (const [body, path] of Object.entries(match.GAS_FILES)) {
+    try {
+      const res = await fetch(path);
+      if (!res.ok) throw new Error(`${path}: HTTP ${res.status}`);
+      match.registerGas(body, temp.parseCSV(await res.text()));
+    } catch (err) {
+      console.warn('gas data not loaded, air score left out:', err.message);
+    }
+  }
   // re-measure the current location's terrain with the real data and rescore everything
   const r = state.temp.ref;
   if (r) Object.assign(r, { terrain: match.terrainAt(r.body, r.lat, r.lon, state.scale) }, match.refExtras(r.body, r.lat, r.lon));

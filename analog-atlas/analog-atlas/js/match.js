@@ -23,6 +23,7 @@ export const MATCH_METRICS = {
   terrain: { label: 'TERRAIN', short: 'TERRAIN' },
   sunwind: { label: 'SUN & WIND', short: 'SUN/WIND' },
   soil: { label: 'GROUND & SOIL', short: 'SOIL' },
+  air: { label: 'AIR & GASES', short: 'AIR' },
 };
 
 const latOf = (i) => 90 - (Math.floor(i / COLS) + 0.5) * RES;
@@ -230,15 +231,55 @@ function soilScore(ref, body, i) {
   return n >= 2 ? sum / n : NaN;
 }
 
-/** Extra reference values (sun & wind, soil) for a clicked point. */
+/* ---------------- air & gases ----------------
+ * The terrain-data gas grids (terrain_data/out/*_gases*.csv, pipeline/36_gas_features.py):
+ *   Mars:  Mars Climate Database 6.2 (gas shares at 2 m, ozone column, dust optical depth, CO2 and water frost)
+ *   Earth: dry-air composition x NASA POWER surface pressure; NASA POWER ozone (TO3) and aerosol (AOD_55)
+ *   Moon:  vacuum (exosphere ~3×10⁻¹⁰ Pa), every gas 0
+ * Gas amounts span 0 .. 100,000 Pa, so they are compared on log10(1 + value), like pressure.
+ * Ranges follow terrain_data/config/features.json (o2_air, co2_air, ozone, haze).
+ */
+export const GAS_FILES = {
+  earth: '../../terrain_data/out/earth_gases_2deg.csv',
+  moon: '../../terrain_data/out/moon_gases.csv',
+  mars: '../../terrain_data/out/mars_gases.csv',
+};
+// weight: share in the AIR score. Oxygen, CO2 and ozone can never be truly matched by any Earth place
+// (Earth always has ~21 kPa O2, ~40 Pa CO2, ~300 DU ozone), so they count a quarter; dust & haze, which Earth
+// places really differ on, counts in full. Same weights as terrain_data/config/features.json.
+export const GAS_FEATURES = [
+  { key: 'o2', col: 'pp_o2_pa', label: 'Oxygen (partial pressure)', range: 3, log: true, unit: ' Pa', digits: 1, weight: 0.25 },
+  { key: 'co2', col: 'pp_co2_pa', label: 'Carbon dioxide (partial pressure)', range: 3, log: true, unit: ' Pa', digits: 0, weight: 0.25 },
+  { key: 'ozone', col: 'ozone_du', label: 'Ozone overhead (UV shield)', range: 2.5, log: true, unit: ' DU', digits: 1, weight: 0.25 },
+  { key: 'haze', col: 'haze_tau', label: 'Dust & haze (optical depth)', range: 1, log: false, unit: '', digits: 2, weight: 1 },
+];
+const gasLoaded = {};
+export function registerGas(body, rows) { storeFeatures(body, rows); gasLoaded[body] = true; }
+export const hasGas = (body) => !!gasLoaded[body];
+export const gasAt = (body, i) => Object.fromEntries(GAS_FEATURES.map((f) => [f.key, featureAt(body, f.col, i)]));
+const log1p10 = (v) => (v >= 0 ? Math.log10(1 + v) : NaN);
+
+function gasScore(ref, body, i) {
+  if (!ref) return NaN;
+  let sum = 0, ws = 0, n = 0;
+  GAS_FEATURES.forEach((f) => {
+    let a = ref[f.key], b = featureAt(body, f.col, i);
+    if (a == null || Number.isNaN(a) || Number.isNaN(b)) return;
+    if (f.log) { a = log1p10(a); b = log1p10(b); }
+    sum += f.weight * clamp01(1 - Math.abs(a - b) / f.range); ws += f.weight; n++;
+  });
+  return n >= 2 ? sum / ws : NaN;
+}
+
+/** Extra reference values (sun & wind, soil, gases) for a clicked point. */
 export function refExtras(body, lat, lon) {
   const i = cellIndex(lat, lon);
-  return { solar: solarAt(body, i), wind: windAt(body, i), soil: soilAt(body, i) };
+  return { solar: solarAt(body, i), wind: windAt(body, i), soil: soilAt(body, i), gas: gasAt(body, i) };
 }
 
 /* ---------------- the match ---------------- */
 
-export const DEFAULT_WEIGHTS = { temp: 40, press: 20, terrain: 25, sunwind: 15, soil: 15 };
+export const DEFAULT_WEIGHTS = { temp: 40, press: 20, terrain: 25, sunwind: 15, soil: 15, air: 10 };
 
 /**
  * ref = { body, lat, lon, mean, high, low, pressure, solar, wind, terrain:{...,sim} }
@@ -248,7 +289,7 @@ export const DEFAULT_WEIGHTS = { temp: 40, press: 20, terrain: 25, sunwind: 15, 
  */
 export function computeMatch(ref, grid, target, { stat, range, scale, weights = DEFAULT_WEIGHTS }) {
   const temp = new Float32Array(N), press = new Float32Array(N), terrain = new Float32Array(N);
-  const sunwind = new Float32Array(N), soil = new Float32Array(N), combo = new Float32Array(N);
+  const sunwind = new Float32Array(N), soil = new Float32Array(N), air = new Float32Array(N), combo = new Float32Array(N);
   const tg = terrainGrid(target, scale);
   const terrainReal = !tg.sim && !ref.terrain.sim;
   const w = { ...weights, terrain: terrainReal ? weights.terrain : 0 };   // sample terrain never counts
@@ -261,8 +302,9 @@ export function computeMatch(ref, grid, target, { stat, range, scale, weights = 
     terrain[i] = terrainScore(ref.terrain, tg, i);
     sunwind[i] = sunwindScore(ref.solar, ref.wind, target, i);
     soil[i] = soilScore(ref.soil, target, i);
+    air[i] = gasScore(ref.gas, target, i);
     let sum = 0, ws = 0;
-    [['temp', temp[i]], ['press', press[i]], ['terrain', terrain[i]], ['sunwind', sunwind[i]], ['soil', soil[i]]].forEach(([k, v]) => {
+    [['temp', temp[i]], ['press', press[i]], ['terrain', terrain[i]], ['sunwind', sunwind[i]], ['soil', soil[i]], ['air', air[i]]].forEach(([k, v]) => {
       if (!Number.isNaN(v) && w[k] > 0) { sum += v * w[k]; ws += w[k]; }
     });
     combo[i] = ws ? sum / ws : NaN;
@@ -281,7 +323,7 @@ export function computeMatch(ref, grid, target, { stat, range, scale, weights = 
   }
   if (best) {
     const i = best.i;
-    best.scores = { temp: temp[i], press: press[i], terrain: terrain[i], sunwind: sunwind[i], soil: soil[i], combo: combo[i] };
+    best.scores = { temp: temp[i], press: press[i], terrain: terrain[i], sunwind: sunwind[i], soil: soil[i], air: air[i], combo: combo[i] };
     best.values = {
       mean: grid.mean[i], high: grid.high[i], low: grid.low[i],
       pressure: pcol ? pcol[i] : NaN,
@@ -289,10 +331,11 @@ export function computeMatch(ref, grid, target, { stat, range, scale, weights = 
       slope: tg.slope ? tg.slope[i] : NaN,
       terrain: Object.fromEntries(tg.keys.map((f) => [f.key, tg[f.key][i]])),
       soil: soilAt(target, i),
+      gas: gasAt(target, i),
     };
     best.terrainKeys = tg.keys;
   }
-  return { target, temp, press, terrain, sunwind, soil, combo, overall: combo, best, terrainSim: !terrainReal, weights: w };
+  return { target, temp, press, terrain, sunwind, soil, air, combo, overall: combo, best, terrainSim: !terrainReal, weights: w };
 }
 
 /* ---------------- night lights (Earth remoteness) from the bundled NASA Black Marble image ---------------- */
@@ -348,6 +391,52 @@ export const VARIABLES = [
   } },
   { id: 'cloud', group: 'Atmosphere', label: 'Cloud cover', get: (b) => (b === 'moon' ? NA('none (no air)') : NA('not in our data yet')) },
   { id: 'uv', group: 'Atmosphere', label: 'UV index', get: (b) => (b === 'earth' ? NA('not in our data yet') : NA('no global grid')) },
+  // ---- air & gases (terrain_data/out/*_gases*.csv)
+  { id: 'gasmix', group: 'Air at the surface', label: 'Main gases (share of the air)', get: (b, i) => {
+    if (b === 'moon') return NA('vacuum: thin exosphere of He, Ar, Ne (LADEE)');
+    const s = (col, l, d) => { const v = featureAt(b, col, i); return Number.isNaN(v) ? null : `${l} ${v.toFixed(d)}%`; };
+    const parts = b === 'mars' ? [s('co2_pct', 'CO₂', 1), s('n2_pct', 'N₂', 1), s('ar_pct', 'Ar', 1), s('o2_pct', 'O₂', 2)]
+      : [s('n2_pct', 'N₂', 0), s('o2_pct', 'O₂', 0), s('ar_pct', 'Ar', 1), s('co2_pct', 'CO₂', 2)];
+    const txt = parts.filter(Boolean).join(' · ');
+    return txt ? { v: 1, text: txt } : NA('—');
+  } },
+  ...[['pp_o2_pa', 'Oxygen (O₂) pressure'], ['pp_co2_pa', 'Carbon dioxide (CO₂) pressure'], ['pp_n2_pa', 'Nitrogen (N₂) pressure'], ['pp_ar_pa', 'Argon (Ar) pressure']]
+    .map(([col, label]) => ({ id: col, group: 'Air at the surface', label, get: (b, i) => {
+      if (b === 'moon') return { v: 0, text: '0 (vacuum)' };
+      const p = featureAt(b, col, i);
+      if (Number.isNaN(p)) return NA('—');
+      return { v: p, text: p >= 1000 ? `${(p / 1000).toFixed(1)} kPa` : p >= 10 ? `${Math.round(p)} Pa` : `${p.toFixed(2)} Pa` };
+    } })),
+  { id: 'ch4', group: 'Air at the surface', label: 'Methane (CH₄)', get: (b, i) => (b === 'earth' ? (fx(featureAt('earth', 'ch4_ppb', i), 0, ' ppb (global mean)') || NA('—'))
+    : b === 'mars' ? (fx(featureAt('mars', 'ch4_ppb', i), 2, ' ppb (Gale crater only, Curiosity)') || NA('—')) : NA('none')) },
+  { id: 'co', group: 'Air at the surface', label: 'Carbon monoxide (CO)', get: (b, i) => (b === 'moon' ? NA('none')
+    : fx(featureAt(b, 'co_ppm', i), b === 'mars' ? 0 : 1, b === 'earth' ? ' ppm (typical)' : ' ppm') || NA('—')) },
+  { id: 'h2he', group: 'Air at the surface', label: 'Hydrogen · helium', get: (b, i) => {
+    if (b === 'moon') return NA('He and H₂ in the exosphere (trace)');
+    const h = featureAt(b, 'h2_ppm', i), he = featureAt(b, 'he_ppm', i);
+    return Number.isNaN(h) ? NA('—') : { v: h, text: `H₂ ${h.toFixed(h < 1 ? 2 : 0)} · He ${Number.isNaN(he) ? '—' : he.toFixed(1)} ppm` };
+  } },
+  { id: 'o3surf', group: 'Air at the surface', label: 'Ozone at ground level', get: (b, i) => (b === 'moon' ? NA('none')
+    : fx(featureAt(b, 'o3_ppb', i), 1, b === 'earth' ? ' ppb (typical)' : ' ppb') || NA('—')) },
+  { id: 'aircol', group: 'Whole atmosphere', label: 'Air overhead (radiation shield)', get: (b, i) => (b === 'moon' ? { v: 0, text: '0 (no shielding)' }
+    : fx(featureAt(b, 'air_column_g_cm2', i), b === 'mars' ? 1 : 0, ' g/cm²') || NA('—')) },
+  { id: 'ozonecol', group: 'Whole atmosphere', label: 'Ozone column (UV shield)', get: (b, i) => (b === 'moon' ? { v: 0, text: '0 (no UV shield)' }
+    : fx(featureAt(b, 'ozone_du', i), b === 'mars' ? 2 : 0, ' Dobson units') || NA(b === 'earth' ? 'sea (land only)' : '—')) },
+  { id: 'haze', group: 'Whole atmosphere', label: 'Dust & haze (optical depth)', get: (b, i) => (b === 'moon' ? { v: 0, text: '0 (no air)' }
+    : fx(featureAt(b, 'haze_tau', i), 2, b === 'mars' ? ' (dust)' : ' (aerosol)') || NA(b === 'earth' ? 'sea (land only)' : '—')) },
+  { id: 'co2frost', group: 'Gas at the surface', label: 'CO₂ frost on the ground', get: (b, i) => {
+    if (b === 'earth') return { v: 0, text: 'never (too warm for CO₂ to freeze)' };
+    if (b === 'moon') return NA('possible in the coldest polar traps, not mapped');
+    const m = featureAt('mars', 'co2_frost_months', i), kg = featureAt('mars', 'co2_frost_kg_m2', i);
+    if (Number.isNaN(m)) return NA('—');
+    return m < 0.5 ? { v: 0, text: 'none' } : { v: m, text: `${Math.round(m)} of 12 months (avg ${kg.toFixed(0)} kg/m²)` };
+  } },
+  { id: 'h2ofrost', group: 'Gas at the surface', label: 'Water frost on the ground', get: (b, i) => (b === 'mars'
+    ? (fx(featureAt('mars', 'h2o_frost_kg_m2', i), 2, ' kg/m² (yearly avg.)') || NA('—'))
+    : b === 'moon' ? NA('ice in polar cold traps (see Water)') : NA('snow and ice: see Water')) },
+  { id: 'soilgas', group: 'Gas at the surface', label: 'Gas held in the soil', get: (b) => NA(b === 'moon'
+    ? 'solar-wind He (incl. helium-3), H, Ne (Apollo samples)' : b === 'mars' ? 'CO₂ and water stuck to grains; perchlorates release O₂'
+      : 'soil air: N₂, O₂ and CO₂ from roots and microbes') },
   { id: 'solar', group: 'Sun & wind', label: 'Solar energy at surface', get: (b, i) => {
     const s = solarAt(b, i);
     if (Number.isNaN(s)) return NA(b === 'earth' ? 'sea (land only)' : '—');
@@ -398,11 +487,6 @@ export const VARIABLES = [
     const lon = Math.abs(lonOf(i));
     return lon <= 82 ? { v: 1, text: 'Always (near side)' } : lon <= 98 ? { v: 0.5, text: 'Sometimes (libration zone)' } : { v: 0, text: 'Never (far side): needs a relay' };
   } },
-  { id: 'co2frost', group: 'Operations', label: 'Seasonal CO₂ frost', get: (b, i, g) => {
-    if (b !== 'mars') return NA('not applicable');
-    const lo = g.low[i];
-    return Number.isNaN(lo) ? NA('—') : lo <= -120 ? { v: 1, text: 'Likely in winter (est.)' } : { v: 0, text: 'Unlikely (est.)' };
-  } },
   { id: 'lights', group: 'Operations', label: 'Night lights (remoteness)', get: (b, i) => {
     if (b !== 'earth') return NA('not applicable');
     if (!nightLights) return NA('loading…');
@@ -412,9 +496,9 @@ export const VARIABLES = [
 ];
 
 export const VARIABLE_SOURCES = {
-  earth: 'NASA POWER (temperature, pressure, water vapour) · WorldClim 2.1 (solar, wind, rain) · NOAA ETOPO 2022 (terrain) · ISRIC SoilGrids 2.0 (topsoil) · GLiM rock types × typical rock chemistry (estimated Fe, Si, K, Th) · NASA Black Marble (night lights)',
-  moon: 'LRO Diviner (temperature) · LRO LOLA (terrain) · Lunar Prospector gamma-ray spectrometer (Fe, Si, K, Th) · solar & Earth visibility calculated from position · ice index is a latitude-based estimate',
-  mars: 'Mars Climate Database 6.2 (temperature, pressure, vapour) · MGS MOLA (terrain) · MGS TES (thermal inertia, dust) · Mars Odyssey gamma-ray spectrometer (hydrogen, Fe, Si, K, Th, Cl) · solar calculated',
+  earth: 'NASA POWER (temperature, pressure, water vapour) · WorldClim 2.1 (solar, wind, rain) · NOAA ETOPO 2022 (terrain) · dry-air gas mix × surface pressure · NASA POWER ozone & aerosol · ISRIC SoilGrids 2.0 (topsoil) · GLiM rock types × typical rock chemistry (estimated Fe, Si, K, Th) · NASA Black Marble (night lights)',
+  moon: 'LRO Diviner (temperature) · vacuum: gases 0 (LADEE exosphere ~3×10⁻¹⁰ Pa) · LRO LOLA (terrain) · Lunar Prospector gamma-ray spectrometer (Fe, Si, K, Th) · solar & Earth visibility calculated from position · ice index is a latitude-based estimate',
+  mars: 'Mars Climate Database 6.2 (temperature, pressure, vapour, gases, ozone, dust, frost) · Curiosity TLS (methane) · MGS MOLA (terrain) · MGS TES (thermal inertia, dust) · Mars Odyssey gamma-ray spectrometer (hydrogen, Fe, Si, K, Th, Cl) · solar calculated',
 };
 
 /** Whole-body constants (no single place can change these). */

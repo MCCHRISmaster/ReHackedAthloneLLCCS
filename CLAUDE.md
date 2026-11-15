@@ -40,6 +40,13 @@ Local `main` (not yet pushed) has `heat-map` and `Graphical_Elements` merged in.
 - Rebuild: `terrain_data\.venv\Scripts\python.exe terrain_data\pipeline\run_all.py --phase soil`, then `--phase score`, then `--phase validate` (needs `node` on PATH).
 - On some Windows machines port 8000 is reserved (EACCES); use `node prototype/server.js . 8002`.
 
+### Air, atmosphere and surface gases (same branch, on top of soil)
+- `terrain_data/pipeline/36_gas_features.py` → `terrain_data/out/{moon,mars}_gases.csv`, `earth_gases_{1,2}deg.csv`. Separate files on purpose: `main` rewrote every row of the team `*_grid.csv` files, so new grid columns there would conflict.
+  - Mars: Mars Climate Database 6.2 (gas shares at 2 m, ozone column, dust, CO₂/water frost). Earth: dry-air constants × surface pressure, NASA POWER `TO3` + `AOD_55` (land boxes). Moon: 0 (vacuum).
+- Scored: oxygen and CO₂ partial pressure, ozone (all `log1p`, a new spec flag in `score_core.py` / `score.js`) at **¼ weight** (new optional `"weight"` per comparison: no Earth place can ever match them), and dust & haze at full weight. Assumption stated in caveats.json, the globe Air panel and METHODS.md.
+- Globe: 🏗️ **Future base** section in the match panel: what a Moon/Mars base at the matched spot must provide itself (oxygen, CO₂ as a resource, UV/radiation shielding, pressure, frost) and what the Earth place can rehearse (dust).
+- Globe: 🫧 **Air & gases** rail symbol + combo slider; data-grid groups "Air at the surface", "Whole atmosphere", "Gas at the surface" (the old temperature-based Mars CO₂-frost row now uses MCD frost maps).
+
 ## The challenge
 NASA Space Apps 2026: **"Permanent Moon Base Locations and Mars."** Use open NASA and other space-agency data
 to find and describe Earth places that are good stand-ins ("analogs") for candidate Moon-base and Mars

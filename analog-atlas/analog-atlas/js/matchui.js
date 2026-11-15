@@ -11,7 +11,7 @@ import { BODIES } from './config.js';
 import { mapHTML, mapXY } from './planet-art.js';
 import {
   MATCH_METRICS, renderScoreCanvas, VARIABLES, VARIABLE_SOURCES, BODY_CONSTANTS,
-  cellIndex, SOLAR_RANGE, WIND_RANGE, PRESS_DECADES, SOIL_FEATURES,
+  cellIndex, SOLAR_RANGE, WIND_RANGE, PRESS_DECADES, SOIL_FEATURES, GAS_FEATURES, featureAt,
 } from './match.js';
 import { matchColor } from './temperature.js';
 
@@ -44,16 +44,18 @@ export const RAIL = [
   { key: 'terrain', icon: '⛰️', name: 'Terrain', short: 'TERRAIN' },
   { key: 'sunwind', icon: '☀️', name: 'Sun & wind', short: 'SUN·WIND' },
   { key: 'soil', icon: '🪨', name: 'Ground & soil', short: 'SOIL' },
+  { key: 'air', icon: '🫧', name: 'Air & gases', short: 'AIR' },
   { key: 'grid', icon: '▦', name: 'Data grid', short: 'DATA' },
 ];
 const RAIL_BY = Object.fromEntries(RAIL.map((r) => [r.key, r]));
-export const HEAT_KEYS = ['combo', 'temp', 'terrain', 'sunwind', 'soil'];
+export const HEAT_KEYS = ['combo', 'temp', 'terrain', 'sunwind', 'soil', 'air'];
 const WEIGHT_PARTS = [
   { key: 'temp', label: '🌡️ Temperature' },
   { key: 'press', label: '⏲️ Pressure' },
   { key: 'terrain', label: '⛰️ Terrain' },
   { key: 'sunwind', label: '☀️ Sun & wind' },
   { key: 'soil', label: '🪨 Ground & soil' },
+  { key: 'air', label: '🫧 Air & gases' },
 ];
 
 let openView = null;   // which symbol's details the right panel shows
@@ -219,6 +221,11 @@ const SOIL_SOURCE = {
   moon: 'Lunar Prospector gamma-ray spectrometer, measured from orbit (top ~30 cm); organic carbon 0',
   mars: 'Mars Odyssey gamma-ray spectrometer, measured from orbit (top ~30 cm, 5° maps); organic carbon ≈0',
 };
+const GAS_SOURCE = {
+  earth: 'Dry-air composition (N₂ 78%, O₂ 21%, Ar 0.9%, CO₂ 425 ppm, NOAA 2025) × NASA POWER surface pressure; NASA POWER ozone column (TO3) and aerosol optical depth (AOD_55), 2001–2025',
+  moon: 'Vacuum: a surface-bounded exosphere of ~3×10⁻¹⁰ Pa (LADEE), so every gas is 0',
+  mars: 'Mars Climate Database 6.2: gas shares 2 m above the ground, ozone column and dust optical depth, yearly averages',
+};
 
 function adviceFor(ref, r, stat) {
   const b = r.best, v = b.values, s = b.scores, there = name(r.target), here = name(ref.body);
@@ -257,7 +264,52 @@ function adviceFor(ref, r, stat) {
   human.push(b.overall >= 0.6
     ? 'A strong overall analog: a good candidate to shortlist for crewed EVA rehearsals and base-site training.'
     : 'A partial analog: useful for specific tests, not full mission rehearsals.');
-  return { rover, human };
+  return { rover, human, base: baseFor(ref, r) };
+}
+
+/**
+ * 🏗️ Future base: what a permanent base at the matched Moon/Mars spot must provide for itself, from that spot's
+ * data, and what this Earth place can (or cannot) rehearse. Only for Moon/Mars targets.
+ * The things Earth can never match (breathable air, UV and radiation shielding) are the base's job, which is why
+ * they are down-weighted in the AIR score rather than counted against every Earth place.
+ */
+function baseFor(ref, r) {
+  if (r.target === 'earth') return [];
+  const v = r.best.values, gt = v.gas || {}, ga = ref.gas || {}, s = r.best.scores;
+  const there = name(r.target), moon = r.target === 'moon';
+  const ok = (x) => x != null && !Number.isNaN(x);
+  const out = [];
+  // oxygen
+  out.push(moon
+    ? 'Oxygen: none in the air. The base makes all of it from regolith, which is about 45% oxygen by mass (e.g. molten-regolith electrolysis or ilmenite reduction). No Earth site can rehearse breathing it in; this site can only test the plant.'
+    : `Oxygen: only ${ok(gt.o2) ? gt.o2.toFixed(1) : '~1'} Pa in the air. The base makes oxygen from the CO₂ atmosphere, as Perseverance's MOXIE did (122 g, 2021 to 2023), and recycles it.`);
+  // CO2
+  if (!moon && ok(gt.co2)) {
+    out.push(`Carbon dioxide: ${Math.round(gt.co2)} Pa, about ${ok(ga.co2) && ga.co2 > 0 ? Math.round(gt.co2 / ga.co2) : 13}× ${name(ref.body)}'s. It is a resource: feedstock for oxygen and, with hydrogen from ice, methane rocket fuel for the return trip.`);
+  } else if (moon) {
+    out.push('Carbon: none in the air, so carbon for life support, plastics and plants is brought from Earth and recycled.');
+  }
+  // UV and radiation shielding
+  const col = featureAt(r.target, 'air_column_g_cm2', r.best.i);
+  out.push(moon
+    ? 'UV and radiation: no air overhead at all (Earth has ~1,000 g/cm²). Habitats are buried or bermed with regolith, and windows, visors and greenhouses filter UV.'
+    : `UV and radiation: ${ok(col) ? col.toFixed(0) : '~16'} g/cm² of air overhead (Earth ~1,000) and ${ok(gt.ozone) ? gt.ozone.toFixed(gt.ozone < 1 ? 2 : 1) : '<1'} Dobson units of ozone (Earth ~300). Cover habitats with regolith; UV-blocking windows, visors and greenhouse panels.`);
+  // dust: the part Earth CAN rehearse
+  if (moon) {
+    out.push(`Dust: no air, so no haze${ok(ga.haze) ? ` (here: optical depth ${ga.haze.toFixed(2)})` : ''}, but sharp, electrically charged regolith clings to everything. Airlocks, suit seals and dust removal are the main test; an Earth desert only approximates it.`);
+  } else if (ok(gt.haze) && ok(ga.haze)) {
+    const close = Math.abs(gt.haze - ga.haze) <= 0.2;
+    out.push(`Dust and haze: optical depth ${gt.haze.toFixed(2)} there vs ${ga.haze.toFixed(2)} here (${pct(s.air)} air match). ${close
+      ? 'Close: a good place to test filters, seals, airlocks and solar-panel cleaning before going.'
+      : gt.haze > ga.haze ? 'Dustier there: filters, seals and panel cleaning need more margin than this site shows.' : 'Clearer there: this site over-tests dust handling.'}`);
+  }
+  // frost and ice
+  const frost = featureAt(r.target, 'co2_frost_months', r.best.i);
+  if (!moon && ok(frost) && frost >= 0.5) {
+    out.push(`Seasonal CO₂ frost there ${Math.round(frost)} months a year: frost loads on solar panels, radiators and landing pads; the frost cycle also changes local air pressure.`);
+  }
+  out.push(`Pressure: the base must hold its own breathable atmosphere (Earth-like ~70 to 100 kPa) against ${moon ? 'vacuum' : `${fmtP(v.pressure)} outside`}.`);
+  return out;
 }
 
 const row3 = (l, a, c) => `<tr><td>${l}</td><td class="num">${a}</td><td class="num">${c}</td></tr>`;
@@ -306,6 +358,25 @@ function metricDetail(k, ref, r, stat) {
       <p class="md-text">Average similarity of iron, potassium, thorium and organic carbon (0% at ${SOIL_FEATURES.map((kk) => `${kk.range}${kk.unit}`).join(', ')} apart) → <b>${pct(s)}</b>.
         Chemistry decides what a rover's instruments see and what a base could mine; organic carbon is what makes Earth soil alive, and the Moon and Mars have essentially none.</p>
       <p class="md-src">${here}: ${esc(SOIL_SOURCE[ref.body])}<br>${there}: ${esc(SOIL_SOURCE[r.target])}</p>`;
+  }
+  if (k === 'air') {
+    const a = ref.gas || {}, t = v.gas || {};
+    const f = (x, kk) => {
+      if (x == null || Number.isNaN(x)) return '—';
+      if (kk.unit === ' Pa' && x >= 1000) return `${(x / 1000).toFixed(1)} kPa`;
+      return `${x.toFixed(x > 0 && x < 1 && kk.digits === 0 ? 2 : kk.digits)}${kk.unit}`;
+    };
+    const wTxt = (w) => (w === 1 ? 'full' : w === 0.25 ? '¼' : String(w));
+    const head4 = `<thead><tr><th></th><th class="num">${here} (here)</th><th class="num">${there} (match)</th><th class="num">counts</th></tr></thead>`;
+    return `<table class="metric-table">${head4}<tbody>
+        ${GAS_FEATURES.map((kk) => `<tr><td>${kk.label}</td><td class="num">${f(a[kk.key], kk)}</td><td class="num">${f(t[kk.key], kk)}</td><td class="num">${wTxt(kk.weight)}</td></tr>`).join('')}</tbody></table>
+      <p class="md-text">Weighted similarity of the oxygen and carbon dioxide where you stand, the ozone overhead and the dust in the air → <b>${pct(s)}</b>.
+        Gases are compared on a log scale (0% at ${10 ** 3}× apart for O₂ and CO₂), because they span from Earth's 21 kPa of oxygen to the Moon's vacuum.</p>
+      <p class="md-warn"><b>Assumption:</b> oxygen, CO₂ and ozone count only ¼ as much as dust &amp; haze. No Earth place can ever truly match them:
+        everywhere on Earth has about 21 kPa of oxygen, 40 Pa of CO₂ and 300 Dobson units of ozone, while ${r.target === 'moon' ? 'the Moon has none' : 'Mars has ~1 Pa of oxygen, ~13× Earth’s CO₂ and almost no ozone'}.
+        Scoring them in full would only lower every Earth place by the same amount. Instead they are treated as things a future ${name(r.target)} base must provide for itself (see 🏗️ below).
+        Dust &amp; haze counts in full because Earth places really differ on it, from clear polar air to Saharan dust.</p>
+      <p class="md-src">${here}: ${esc(GAS_SOURCE[ref.body])}<br>${there}: ${esc(GAS_SOURCE[r.target])}</p>`;
   }
   // terrain
   const t = ref.terrain, keys = b.terrainKeys || [];
@@ -386,6 +457,8 @@ export function renderMatchPanel(m, h) {
       </div>
       <div class="mp-section rover"><h4>🚙 ROVER DEVELOPMENT</h4>${list(adv.rover)}</div>
       <div class="mp-section human"><h4>🧑‍🚀 HUMAN DEVELOPMENT</h4>${list(adv.human)}</div>
+      ${adv.base.length ? `<div class="mp-section base"><h4>🏗️ FUTURE ${BODIES[r.target].label} BASE</h4>
+        <p class="md-text">What a permanent base at this spot must provide for itself, and what ${/^Selected point/.test(ref.label) ? 'your chosen spot' : esc(ref.label)} can rehearse.</p>${list(adv.base)}</div>` : ''}
       ${m.isSite ? '<button class="mini-btn wide mp-brief">SITE BRIEFING ▸</button>' : ''}
     </div>`;
   el.querySelectorAll('[data-go]').forEach((btn) => btn.addEventListener('click', () => h.onTarget(btn.dataset.go)));

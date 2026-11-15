@@ -3,7 +3,7 @@
  * It mirrors pipeline/score_core.py line for line; pipeline/70_validate.py checks they agree.
  *
  * Per comparison:  match = max(0, 1 - |earth - target| / range)
- * Per dimension:   dim score = mean of the available matches; coverage = available / total
+ * Per dimension:   dim score = weighted mean of the available matches (comparison "weight", default 1); coverage = available / total
  * Overall:         sum(w_d * dim_d) / sum(w_d) over dimensions that have data
  *
  * Usage:
@@ -32,6 +32,7 @@ export function createScorer(config, ranges = {}) {
   const minAvailable = config.features.min_available ?? 0;
   const dimIdx = {};                                   // dimension -> indexes of comparisons that count in it
   for (const d of DIMS) dimIdx[d] = comparisons.map((c, k) => (c.dimensions.includes(d) ? k : -1)).filter((k) => k >= 0);
+  const cw = comparisons.map((c) => c.weight ?? 1);    // comparison weight inside its dimensions (score_core.cweight)
 
   /** Evaluate one value spec. Missing columns give NaN. Same semantics as score_core.eval_spec. */
   function evalSpec(spec, get, lat, body) {
@@ -55,6 +56,7 @@ export function createScorer(config, ranges = {}) {
     if (spec.times_scaled) { const [c2, lo, hi] = spec.times_scaled; v = v * clip01((col(c2) - lo) / (hi - lo)); }
     if (spec.cap !== undefined) v = Math.min(v, spec.cap);
     if (spec.log10) v = v > 0 ? Math.log10(v) : NaN;
+    if (spec.log1p) v = v >= 0 ? Math.log10(1 + v) : NaN;   // log scale that keeps 0 (vacuum) as 0
     if (spec.scale === 'body_range') { const r = ranges[body]?.[spec.col]; v = r ? Math.min(1, v / r) : NaN; }
     return v;
   }
@@ -87,9 +89,9 @@ export function createScorer(config, ranges = {}) {
     let num = 0, den = 0;
     for (let j = 0; j < DIMS.length; j++) {
       const ids = dimIdx[DIMS[j]];
-      let sum = 0, cnt = 0;
-      for (const k of ids) if (!Number.isNaN(m[k])) { sum += m[k]; cnt++; }
-      dim[j] = cnt > 0 ? sum / cnt : NaN;
+      let sum = 0, cnt = 0, ws = 0;
+      for (const k of ids) if (!Number.isNaN(m[k])) { sum += cw[k] * m[k]; ws += cw[k]; cnt++; }
+      dim[j] = ws > 0 ? sum / ws : NaN;
       cov[j] = ids.length ? cnt / ids.length : 0;
       if (cnt > 0) { num += w[j] * dim[j]; den += w[j]; }
     }
@@ -106,14 +108,14 @@ export function createScorer(config, ranges = {}) {
     const m = matches(E, T);
     const w = weightsOf(presetId);
     const { dim, cov, overall } = aggregate(m, w);
-    const avail = DIMS.map((d) => dimIdx[d].filter((k) => !Number.isNaN(m[k])).length);
+    const avail = DIMS.map((d) => dimIdx[d].reduce((s, k) => s + (Number.isNaN(m[k]) ? 0 : cw[k]), 0));
     let W = 0; DIMS.forEach((d, j) => { if (avail[j] > 0) W += w[j]; });
     const losses = [], skipped = [];
     for (let k = 0; k < nC; k++) {
       const c = comparisons[k];
       if (Number.isNaN(m[k])) { skipped.push(c.id); continue; }
       let pts = 0;
-      DIMS.forEach((d, j) => { if (c.dimensions.includes(d) && avail[j] > 0 && W > 0) pts += (w[j] / W) * (1 - m[k]) / avail[j] * 100; });
+      DIMS.forEach((d, j) => { if (c.dimensions.includes(d) && avail[j] > 0 && W > 0) pts += (w[j] / W) * cw[k] * (1 - m[k]) / avail[j] * 100; });
       const sh = c.earth_show;
       const showV = sh ? earth.get(sh.col) : undefined;
       const eTxt = sh && showV !== undefined && !Number.isNaN(showV) ? fmt(showV, sh.digits) + sh.unit : fmt(E[k], c.digits) + c.unit;
