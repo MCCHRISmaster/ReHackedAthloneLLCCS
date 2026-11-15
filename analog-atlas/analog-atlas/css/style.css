@@ -889,3 +889,11 @@ body:not(.left-collapsed).right-collapsed .planet-select { left: calc((100vw + 3
 .dg-card td.na { color: var(--muted); font-style: italic; }
 .dg-card tr.on td { color: var(--text); font-weight: 600; }
 .dg-hint { margin: 4px 0 8px; }
+
+/* combo: mission preset box */
+.cw-preset { border: 1px solid var(--panel-edge); background: rgba(255,255,255,0.03); padding: 6px 9px; margin: 4px 0 6px; font-size: 12px; }
+.cw-preset b { letter-spacing: 0.12em; font-size: 12px; }
+.cw-preset > span { color: var(--muted); font-size: 11px; }
+.cw-preset ul { margin: 4px 0; padding-left: 16px; }
+.cw-preset li { margin: 1px 0; }
+.cw-preset-note { display: block; font-family: var(--font-mono); font-size: 10px; color: var(--muted) !important; }

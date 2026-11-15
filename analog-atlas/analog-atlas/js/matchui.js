@@ -11,7 +11,7 @@ import { BODIES } from './config.js';
 import { mapHTML, mapXY } from './planet-art.js';
 import {
   MATCH_METRICS, renderScoreCanvas, VARIABLES, BODY_CONSTANTS,
-  cellIndex, SOLAR_RANGE, WIND_RANGE, PRESS_DECADES, VAR_CMP,
+  cellIndex, SOLAR_RANGE, WIND_RANGE, PRESS_DECADES, VAR_CMP, WEIGHT_PRESETS, PRESET_WHY,
 } from './match.js';
 import { matchColor } from './temperature.js';
 
@@ -116,7 +116,8 @@ export function renderLeft(m, h) {
       pin = `<span class="mm2-pin ref" style="left:${p.x * 100}%;top:${p.y * 100}%"></span>`;
       scores = '<div class="mm2-note">Your location is on this world</div>';
     } else if (r && r.best) {
-      const p = mapXY(r.best.lat, r.best.lon);
+      const pinB = (m.bests && m.bests[b]) || r.best;
+      const p = mapXY(pinB.lat, pinB.lon);
       pin = `<span class="mm2-pin best" style="left:${p.x * 100}%;top:${p.y * 100}%"></span>`;
       scores = `<div class="mm2-scores">${HEAT_KEYS.filter((k) => k !== 'combo').map((k) => {
         const v = r.best.scores[k];
@@ -126,7 +127,8 @@ export function renderLeft(m, h) {
       scores = `<div class="mm2-note">${m.ref ? 'No data' : 'Pick a location to see matches'}</div>`;
     }
     const hv = m.heat && m.heat[b];
-    const v = !isRef && r && r.best && hv ? hv[r.best.i] : NaN;
+    const pb = (m.bests && m.bests[b]) || (r && r.best);
+    const v = !isRef && pb && hv ? hv[pb.i] : NaN;
     const head = !isRef && r && r.best ? `<span class="mm2-pct ${scoreClass(v)}">${pct(v)}</span>` : '';
     return `<div class="mm2-card" data-body="${b}">
         <div class="mm2-head"><span>${BODIES[b].label}</span>${head}</div>
@@ -192,12 +194,12 @@ export function renderAdvanced(m, h) {
 /* ---------------- right rail ---------------- */
 
 /** r = result for the active target (or null); heat = symbol currently drawn; onMetric(key). */
-export function renderRail(r, { onMetric, heat }) {
+export function renderRail(r, { onMetric, heat, scores = {} }) {
   const box = $('rail-metrics');
   if (!box) return;
   box.innerHTML = RAIL.map((s) => {
     const k = s.key, isGrid = k === 'grid', noPct = isGrid || k === 'combo';   // combo % is in the top bar already
-    const v = !isGrid && r && r.best ? r.best.scores[k] : NaN;
+    const v = isGrid || !r ? NaN : (scores[k] ?? (r.best ? r.best.scores[k] : NaN));
     const has = !Number.isNaN(v);
     const on = openView === k || (!isGrid && heat === k);
     return `<button class="rail-metric ${has ? 'scored' : ''} ${on ? 'open' : ''} ${isGrid ? 'grid' : ''}" data-metric="${k}"
@@ -265,7 +267,7 @@ function adviceFor(ref, r, stat) {
 
 const row3 = (l, a, c) => `<tr><td>${l}</td><td class="num">${a}</td><td class="num">${c}</td></tr>`;
 
-function comboDetail(ref, r, weights) {
+function comboDetail(ref, r, weights, scale = 'human') {
   const b = r.best;
   const total = WEIGHT_PARTS.reduce((s, p) => s + (r.weights[p.key] > 0 ? weights[p.key] : 0), 0) || 1;
   const rows = WEIGHT_PARTS.map((p) => {
@@ -276,13 +278,17 @@ function comboDetail(ref, r, weights) {
         <div class="cw-share"><span data-share="${p.key}">${counted ? Math.round((weights[p.key] / total) * 100) : 0}% of combo</span>${Number.isNaN(s) ? ' · no data here' : ''}</div>
       </div>`;
   }).join('');
-  return `<p class="md-text">The combo mixes every measurement. Drag the sliders to decide what matters most for your mission; the heat maps, pins and % update when you let go.</p>
+  const preset = WEIGHT_PRESETS[scale], custom = Object.keys(preset).some((k) => preset[k] !== weights[k]);
+  return `<div class="cw-preset"><b>${scale === 'rover' ? '🚙 ROVER' : '🧑‍🚀 HUMAN'} MISSION PRESET</b>${custom ? ' <span>(adjusted)</span>' : ''}
+      <ul>${PRESET_WHY[scale].map((x) => `<li>${esc(x)}</li>`).join('')}</ul>
+      <span class="cw-preset-note">Switch HUMAN / ROVER in Advanced options; RESET returns to the preset.</span></div>
+    <p class="md-text">The combo mixes every measurement. Drag the sliders to decide what matters most for your mission; the heat maps, pins and % update when you let go.</p>
     <div class="cw-list">${rows}</div>
-    <button class="mini-btn cw-reset">RESET WEIGHTS</button>`;
+    <button class="mini-btn cw-reset">RESET TO PRESET</button>`;
 }
 
-function metricDetail(k, ref, r, stat) {
-  const b = r.best, v = b.values, s = b.scores[k], here = name(ref.body), there = name(r.target);
+function metricDetail(k, ref, r, stat, best) {
+  const b = best || r.best, v = b.values, s = b.scores[k], here = name(ref.body), there = name(r.target);
   const head = `<thead><tr><th></th><th class="num">${here} (here)</th><th class="num">${there} (match)</th></tr></thead>`;
   if (k === 'temp') {
     const d = v[stat] - ref[stat];
@@ -357,7 +363,7 @@ export function heatLabel(metric) {
 function gridView(ref, r, m) {
   const grids = m.grids, scores = m.gridScores || {}, sel = m.selectedVar;
   const here = name(ref.body), there = name(r.target);
-  const gi = cellIndex(ref.lat, ref.lon), ti = r.best.i;
+  const gi = cellIndex(ref.lat, ref.lon), ti = (m.best || r.best).i;
   const gH = grids[ref.body], gT = grids[r.target];
   const val = (body, i, g, vd) => {
     const x = g ? vd.get(body, i, g) : { v: NaN, text: '—' };
@@ -439,22 +445,22 @@ export function renderMatchPanel(m, h) {
     el.classList.remove('hidden');
     return;
   }
-  const b = r.best, ref = m.ref;
+  const b = m.best || r.best, ref = m.ref;
   const view = openView || 'combo';
   const idx = m.targets.indexOf(m.active);
   const prev = m.targets[(idx - 1 + m.targets.length) % m.targets.length];
   const next = m.targets[(idx + 1) % m.targets.length];
   const sym = RAIL_BY[view];
   const body = view === 'grid' ? gridView(ref, r, m)
-    : view === 'combo' ? comboDetail(ref, r, m.weights) : metricDetail(view, ref, r, m.stat);
-  const adv = adviceFor(ref, r, m.stat);
+    : view === 'combo' ? comboDetail(ref, r, m.weights, m.scale) : metricDetail(view, ref, r, m.stat, b);
+  const adv = adviceFor(ref, { ...r, best: b }, m.stat);   // advice for the spot actually shown
   const list = (arr) => `<ul>${arr.map((x) => `<li>${esc(x)}</li>`).join('')}</ul>`;
-  const viewScore = view === 'grid' ? NaN : b.scores[view];
+  const viewScore = view === 'grid' ? NaN : b.overall;
 
   el.innerHTML = `
     <div class="mp-head">
       ${m.targets.length > 1 ? `<button class="mp-nav" data-go="${prev}" aria-label="Previous world">◁</button>` : '<span></span>'}
-      <div class="mp-title"><div class="mp-kicker">${b.closestOnly ? 'CLOSEST SPOT ON' : 'BEST MATCH ON'}</div><div class="mp-body">${BODIES[r.target].label}</div></div>
+      <div class="mp-title"><div class="mp-kicker">${b.closestOnly ? 'CLOSEST SPOT ON' : `BEST ${m.panelMetric && m.panelMetric !== 'combo' ? heatLabel(m.panelMetric).name.toUpperCase() + ' ' : ''}MATCH ON`}</div><div class="mp-body">${BODIES[r.target].label}</div></div>
       ${m.targets.length > 1 ? `<button class="mp-nav" data-go="${next}" aria-label="Next world">▷</button>` : '<span></span>'}
       <button class="brief-close" aria-label="Close match panel">✕</button>
     </div>

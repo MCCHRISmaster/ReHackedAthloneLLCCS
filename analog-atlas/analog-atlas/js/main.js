@@ -115,7 +115,7 @@ function weightsText() {
 function computeResults() {
   const t = state.temp, m = state.match;
   if (!t.ref) { m.results = {}; m.key = ''; return; }
-  m.weights ||= { ...match.DEFAULT_WEIGHTS };
+  m.weights ||= { ...match.WEIGHT_PRESETS[state.scale] };
   const key = [t.ref.body, t.ref.lat, t.ref.lon, t.stat, t.range, state.scale, Object.keys(t.grids).join(','), landReady, terrainVersion, JSON.stringify(m.weights)].join('|');
   if (key === m.key) return;
   m.key = key;
@@ -146,6 +146,7 @@ const advHandlers = {
   onGridLines: (on) => { state.temp.gridLines = on; refreshTemp(); },
   onScale: (s) => {
     state.scale = s;
+    state.match.weights = { ...match.WEIGHT_PRESETS[s] };   // HUMAN / ROVER preset for the combo sliders
     const r = state.temp.ref;
     if (r) r.terrain = match.terrainAt(r.body, r.lat, r.lon, s);
     refreshTemp();
@@ -162,7 +163,7 @@ const advHandlers = {
 const panelHandlers = {
   onTarget: (b) => { state.match.active = b; refreshTemp(); },
   onWeights: (w) => { state.match.weights = { ...w }; refreshTemp(); },
-  onResetWeights: () => { state.match.weights = { ...match.DEFAULT_WEIGHTS }; refreshTemp(); },
+  onResetWeights: () => { state.match.weights = { ...match.WEIGHT_PRESETS[state.scale] }; refreshTemp(); },
   // ▦ grid buttons: comparable variables switch the heat map; one-sided ones / constants just open their card
   onGridItem: (id, comparable) => {
     const m = state.match;
@@ -172,7 +173,7 @@ const panelHandlers = {
     else if (again && m.metric.startsWith('var:')) m.metric = 'combo';
     refreshTemp();
   },
-  onGo: () => { const r = state.match.results[state.match.active]; if (r && r.best) goToSpot(r.target, r.best.lat, r.best.lon); },
+  onGo: () => { const b = bestFor(state.match.active, panelMetric()); if (b) goToSpot(state.match.active, b.lat, b.lon); },
   onClose: () => { state.panel = null; setRightOpen(false); },
   onBriefing: () => { const id = state.temp.ref && state.temp.ref.siteId; if (id) { state.match.open = false; selectSite(byId[id], { fly: false }); } },
 };
@@ -191,12 +192,13 @@ function refreshTemp({ keepAdvanced = false } = {}) {
   mui.renderMatchBar({ ref: t.ref, loading: t.loading, targets, results: m.results, active: m.active }, {
     onPick: (b) => { m.active = b; clearProbe(); state.panel = null; setRightOpen(true); },
     onGoRef: () => { if (t.ref) goToSpot(t.ref.body, t.ref.lat, t.ref.lon); },
-    onGoBest: () => { const r = m.results[m.active]; if (r && r.best) goToSpot(r.target, r.best.lat, r.best.lon); },
+    onGoBest: () => { const b = bestFor(m.active); if (b) goToSpot(m.active, b.lat, b.lon); },
   });
   mui.renderLeft({ current: state.body, ref: t.ref, loading: t.loading, error: t.error, metric: m.metric,
     results: m.results, online: state.online, stat: t.stat, sites: missionSites(),
     heat: Object.fromEntries(Object.keys(m.results).map((b) => [b, heatArray(b)])),
-    heatLabel: mui.heatLabel(m.metric) }, leftHandlers);
+    heatLabel: mui.heatLabel(m.metric),
+    bests: Object.fromEntries(Object.keys(m.results).map((b) => [b, bestFor(b)])) }, leftHandlers);
   if (!keepAdvanced) {
     mui.renderAdvanced({ stat: t.stat, range: t.range, opacity: t.opacity, gridLines: t.gridLines,
       scale: state.scale, ref: t.ref, weightsText: weightsText() }, advHandlers);
@@ -214,7 +216,8 @@ function renderPanel(force = false) {
   mui.renderMatchPanel({ ref: t.ref, loading: t.loading, targets: t.ref ? targetsOf(t.ref) : [], active: m.active,
     result: t.ref ? m.results[m.active] : null, stat: t.stat, isSite: !!(t.ref && t.ref.siteId),
     weights: m.weights || match.DEFAULT_WEIGHTS, grids: t.grids,
-    gridScores: t.ref ? gridScores() : {}, selectedVar: m.selectedVar || null, heatMetric: m.metric }, panelHandlers);
+    gridScores: t.ref ? gridScores() : {}, selectedVar: m.selectedVar || null, heatMetric: m.metric,
+    best: t.ref ? bestFor(m.active, panelMetric()) : null, panelMetric: panelMetric(), scale: state.scale }, panelHandlers);
 }
 
 /* ---------------- collapsible side panels (both start collapsed) ---------------- */
@@ -245,7 +248,9 @@ function updateSideTabs() {
   badge.textContent = state.temp.ref && best >= 0 ? `${Math.round(best * 100)}%` : '';
   r.classList.toggle('has-result', !!badge.textContent);
   // 🌡️ ⏲️ ⛰️ rail: scores for the world currently shown in the match panel
-  mui.renderRail(state.temp.ref ? state.match.results[state.match.active] : null, { onMetric: onRailMetric, heat: state.match.metric });
+  const act = state.match.active;
+  const railScores = state.temp.ref ? Object.fromEntries(mui.HEAT_KEYS.map((k) => { const b = bestFor(act, k); return [k, b ? b.overall : NaN]; })) : {};
+  mui.renderRail(state.temp.ref ? state.match.results[act] : null, { onMetric: onRailMetric, heat: state.match.metric, scores: railScores });
 }
 
 /** Tap a rail symbol: open the right panel on that measurement's details (tap again to hide them). */
@@ -284,14 +289,39 @@ function heatArray(body) {
   }
   return r[m.metric];
 }
+/** Best spot on a world for a symbol or grid variable (defaults to what the maps show). */
+const bestCache = new Map();
+function metricArray(body, metric) {
+  const r = state.match.results[body];
+  if (!r) return null;
+  if (metric.startsWith('var:')) { const v = variableResult(metric.slice(4), body); return v ? v.scores : null; }
+  return r[metric] || null;
+}
+function bestFor(body, metric = state.match.metric) {
+  const r = state.match.results[body];
+  if (!r) return null;
+  if (metric === 'combo') return r.best;
+  const key = `${state.match.key}|${metric}|${body}`;
+  if (!bestCache.has(key)) {
+    if (bestCache.size > 300) bestCache.clear();
+    bestCache.set(key, match.bestOf(r, metricArray(body, metric)));
+  }
+  return bestCache.get(key);
+}
+/** Which metric the right panel is about: its symbol, or (data grid) whatever the maps show. */
+function panelMetric() {
+  const v = mui.getOpenMetric() || 'combo';
+  return mui.HEAT_KEYS.includes(v) ? v : state.match.metric;
+}
+
 /** For the grid buttons: % at the best-match spot for every comparable variable, on the active world. */
 function gridScores() {
-  const m = state.match, r = m.results[m.active];
+  const m = state.match, pin = bestFor(m.active, panelMetric());
   const out = {};
-  if (!r || !r.best) return out;
+  if (!pin) return out;
   Object.keys(match.VAR_CMP).forEach((id) => {
     const v = variableResult(id, m.active);
-    out[id] = v ? v.scores[r.best.i] : null;
+    out[id] = v ? v.scores[pin.i] : null;
   });
   return out;
 }
@@ -305,8 +335,10 @@ function drawHeat() {
   if (!r) { globe.setHeatmap(null); globe.setBestMatch(null); return; }
   const heat = heatArray(state.body);
   globe.setHeatmap(heat ? match.renderScoreCanvas(heat, { gridLines: t.gridLines }) : null);
-  globe.setBestMatch(r.best ? { lat: r.best.lat, lon: r.best.lon,
-    label: r.best.closestOnly ? `CLOSEST (${Math.round(r.best.gap)}°C APART)` : `BEST MATCH ${Math.round(r.best.overall * 100)}%` } : null);
+  const pin = bestFor(state.body);
+  const what = m.metric === 'combo' ? '' : `${mui.heatLabel(m.metric).name.toUpperCase()} `;
+  globe.setBestMatch(pin ? { lat: pin.lat, lon: pin.lon,
+    label: pin.closestOnly ? `CLOSEST (${Math.round(pin.gap)}°C APART)` : `BEST ${what}MATCH ${Math.round(pin.overall * 100)}%` } : null);
 }
 
 let heatQueued = false;

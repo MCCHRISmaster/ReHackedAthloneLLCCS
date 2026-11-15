@@ -191,7 +191,23 @@ export function refExtras(body, lat, lon) {
 
 /* ---------------- the match ---------------- */
 
-export const DEFAULT_WEIGHTS = { temp: 40, press: 20, terrain: 25, sunwind: 15 };
+/**
+ * Mission presets for the combo sliders (Advanced options → MISSION).
+ *  HUMAN: crews live inside the thermal and pressure environment (suits, habitats, life support),
+ *         need sunlight for power and warmth; terrain matters less (walking EVAs cover short distances).
+ *  ROVER: machines don't breathe, so air pressure barely matters; terrain decides whether it can drive at all;
+ *         sun and wind drive solar power, dust on panels and wind loads; temperature still matters for
+ *         batteries and electronics, but heaters and insulation handle it.
+ */
+export const WEIGHT_PRESETS = {
+  human: { temp: 35, press: 30, terrain: 15, sunwind: 20 },
+  rover: { temp: 20, press: 5, terrain: 50, sunwind: 25 },
+};
+export const PRESET_WHY = {
+  human: ['🌡️ high: suits and habitats live in this heat and cold', '⏲️ high: air pressure decides life support and suit design', '☀️ medium: sunlight for power and warmth', '⛰️ low: crews walk short distances'],
+  rover: ['⛰️ high: slopes, roughness and craters decide where it can drive', '☀️ medium: solar power, dust on panels, wind loads', '🌡️ medium: batteries and electronics, helped by heaters', '⏲️ low: machines do not breathe'],
+};
+export const DEFAULT_WEIGHTS = WEIGHT_PRESETS.human;
 
 /**
  * ref = { body, lat, lon, mean, high, low, pressure, solar, wind, terrain:{...,sim} }
@@ -231,19 +247,9 @@ export function computeMatch(ref, grid, target, { stat, range, scale, weights = 
     }
     if (bi >= 0) best = { i: bi, lat: latOf(bi), lon: lonOf(bi), overall: combo[bi], closestOnly: true, gap: bd };
   }
-  if (best) {
-    const i = best.i;
-    best.scores = { temp: temp[i], press: press[i], terrain: terrain[i], sunwind: sunwind[i], combo: combo[i] };
-    best.values = {
-      mean: grid.mean[i], high: grid.high[i], low: grid.low[i],
-      pressure: pcol ? pcol[i] : NaN,
-      solar: solarAt(target, i), wind: windAt(target, i),
-      slope: tg.slope ? tg.slope[i] : NaN,
-      terrain: Object.fromEntries(tg.keys.map((f) => [f.key, tg[f.key][i]])),
-    };
-    best.terrainKeys = tg.keys;
-  }
-  return { target, temp, press, terrain, sunwind, combo, overall: combo, best, terrainSim: !terrainReal, weights: w };
+  const res = { target, temp, press, terrain, sunwind, combo, overall: combo, best, terrainSim: !terrainReal, weights: w, grid, tg };
+  if (best) fillBest(res, best);
+  return res;
 }
 
 /* ---------------- night lights (Earth remoteness) from the bundled NASA Black Marble image ---------------- */
@@ -426,6 +432,28 @@ export const BODY_CONSTANTS = [
 ];
 
 /** Highest overall score (land only on Earth); ties broken by the best-matching 3×3 neighbourhood. */
+/** Attach every metric's score and the measured values at the best cell. */
+function fillBest(res, best) {
+  const i = best.i, g = res.grid, tg = res.tg, pcol = g.columns && g.columns.pressure_pa;
+  best.scores = { temp: res.temp[i], press: res.press[i], terrain: res.terrain[i], sunwind: res.sunwind[i], combo: res.combo[i] };
+  best.values = {
+    mean: g.mean[i], high: g.high[i], low: g.low[i],
+    pressure: pcol ? pcol[i] : NaN,
+    solar: solarAt(res.target, i), wind: windAt(res.target, i),
+    slope: tg.slope ? tg.slope[i] : NaN,
+    terrain: Object.fromEntries(tg.keys.map((f) => [f.key, tg[f.key][i]])),
+  };
+  best.terrainKeys = tg.keys;
+  return best;
+}
+
+/** Best cell for ANY 0..1 array of a match result (a symbol or one grid variable); overall = that array's score. */
+export function bestOf(res, arr) {
+  if (!res || !arr) return null;
+  const b = bestCell(arr, res.target);
+  return b ? fillBest(res, { ...b, overall: arr[b.i] }) : null;
+}
+
 function bestCell(arr, target) {
   const ok = (i) => !Number.isNaN(arr[i]) && (target !== 'earth' || isLand(latOf(i), lonOf(i)));
   let max = -1;
