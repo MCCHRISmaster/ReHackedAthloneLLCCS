@@ -33,7 +33,7 @@ def table(path: Path, grid) -> dict:
     return d
 
 
-def merge_soil(tbl: dict, path: Path, grid) -> None:  # also used for the gas grids
+def merge_soil(tbl: dict, path: Path, grid) -> None:  # also used for the gas and radiation grids
     """Add the columns of a soil (35_soil_features.py) or gas (36_gas_features.py) grid to a feature table. Missing file = those comparisons drop out."""
     if not path.exists():
         return
@@ -70,6 +70,7 @@ def load_all() -> dict:
     earth = table(OUT / "earth_features_1deg.csv", G1)
     merge_soil(earth, OUT / "earth_soil_1deg.csv", G1)
     merge_soil(earth, OUT / "earth_gases_1deg.csv", G1)
+    merge_soil(earth, OUT / "earth_radiation_1deg.csv", G1)
     if "temp_mean_c" not in earth:
         p = ROOT / "work" / "power_temp_1deg.npz"
         if p.exists():
@@ -84,6 +85,8 @@ def load_all() -> dict:
     merge_soil(mars, OUT / "mars_soil.csv", G2)
     merge_soil(moon, OUT / "moon_gases.csv", G2)
     merge_soil(mars, OUT / "mars_gases.csv", G2)
+    merge_soil(moon, OUT / "moon_radiation.csv", G2)
+    merge_soil(mars, OUT / "mars_radiation.csv", G2)
     for body, tbl, path in (("moon", moon, REPO / "moon_data" / "moon_grid.csv"), ("mars", mars, REPO / "mars_data" / "mars_grid.csv")):
         t = read_grid_csv(path, G2)
         for k in ("temp_mean_c", "temp_high_c", "temp_low_c"):

@@ -24,6 +24,7 @@ export const MATCH_METRICS = {
   sunwind: { label: 'SUN & WIND', short: 'SUN/WIND' },
   soil: { label: 'GROUND & SOIL', short: 'SOIL' },
   air: { label: 'AIR & GASES', short: 'AIR' },
+  rad: { label: 'UV & RADIATION', short: 'RAD' },
 };
 
 const latOf = (i) => 90 - (Math.floor(i / COLS) + 0.5) * RES;
@@ -271,15 +272,50 @@ function gasScore(ref, body, i) {
   return n >= 2 ? sum / ws : NaN;
 }
 
-/** Extra reference values (sun & wind, soil, gases) for a clicked point. */
+/* ---------------- UV & radiation ----------------
+ * The terrain-data radiation grids (terrain_data/out/*_radiation*.csv, pipeline/37_radiation_features.py):
+ *   Earth: NASA POWER UV-A / UV-B; UV-C 0 (ozone); cosmic-ray dose from elevation (UNSCEAR / Bouville & Lowder)
+ *   Mars:  UV estimated from MCD surface sunlight and Curiosity REMS's UV split; dose = Curiosity RAD scaled by air overhead
+ *   Moon:  UV from sunlight geometry (no air); dose = Chang'e-4 LND, 1.37 mSv/day everywhere
+ * weight: UV-B counts in full (Earth places differ a lot on it: high deserts get within ~3× of Mars); UV-C and
+ * the dose count a quarter because no Earth place can ever match them. Same as terrain_data/config/features.json.
+ */
+export const RAD_FILES = {
+  earth: '../../terrain_data/out/earth_radiation_2deg.csv',
+  moon: '../../terrain_data/out/moon_radiation.csv',
+  mars: '../../terrain_data/out/mars_radiation.csv',
+};
+export const RAD_FEATURES = [
+  { key: 'uvb', col: 'uvb_w_m2', label: 'UV-B at the ground', range: 1.5, scale: 'log10', unit: ' W/m²', digits: 2, weight: 1 },
+  { key: 'uvc', col: 'uvc_w_m2', label: 'UV-C at the ground (germicidal)', range: 3, scale: 'log1p_milli', unit: ' W/m²', digits: 2, weight: 0.25 },
+  { key: 'dose', col: 'dose_msv_yr', label: 'Cosmic-ray dose', range: 3, scale: 'log10', unit: ' mSv/yr', digits: 1, weight: 0.25 },
+];
+export const CAREER_LIMIT_MSV = 600;   // NASA-STD-3001 (2022) career effective-dose limit
+const radLoaded = {};
+export function registerRad(body, rows) { storeFeatures(body, rows); radLoaded[body] = true; }
+export const radAt = (body, i) => Object.fromEntries(RAD_FEATURES.map((f) => [f.key, featureAt(body, f.col, i)]));
+const radTransform = (f, v) => (f.scale === 'log10' ? (v > 0 ? Math.log10(v) : NaN) : v >= 0 ? Math.log10(1 + 1000 * v) : NaN);
+
+function radScore(ref, body, i) {
+  if (!ref) return NaN;
+  let sum = 0, ws = 0, n = 0;
+  RAD_FEATURES.forEach((f) => {
+    const a = radTransform(f, ref[f.key]), b = radTransform(f, featureAt(body, f.col, i));
+    if (Number.isNaN(a) || Number.isNaN(b)) return;
+    sum += f.weight * clamp01(1 - Math.abs(a - b) / f.range); ws += f.weight; n++;
+  });
+  return n >= 2 ? sum / ws : NaN;
+}
+
+/** Extra reference values (sun & wind, soil, gases, UV & radiation) for a clicked point. */
 export function refExtras(body, lat, lon) {
   const i = cellIndex(lat, lon);
-  return { solar: solarAt(body, i), wind: windAt(body, i), soil: soilAt(body, i), gas: gasAt(body, i) };
+  return { solar: solarAt(body, i), wind: windAt(body, i), soil: soilAt(body, i), gas: gasAt(body, i), rad: radAt(body, i) };
 }
 
 /* ---------------- the match ---------------- */
 
-export const DEFAULT_WEIGHTS = { temp: 40, press: 20, terrain: 25, sunwind: 15, soil: 15, air: 10 };
+export const DEFAULT_WEIGHTS = { temp: 40, press: 20, terrain: 25, sunwind: 15, soil: 15, air: 10, rad: 10 };
 
 /**
  * ref = { body, lat, lon, mean, high, low, pressure, solar, wind, terrain:{...,sim} }
@@ -289,7 +325,8 @@ export const DEFAULT_WEIGHTS = { temp: 40, press: 20, terrain: 25, sunwind: 15, 
  */
 export function computeMatch(ref, grid, target, { stat, range, scale, weights = DEFAULT_WEIGHTS }) {
   const temp = new Float32Array(N), press = new Float32Array(N), terrain = new Float32Array(N);
-  const sunwind = new Float32Array(N), soil = new Float32Array(N), air = new Float32Array(N), combo = new Float32Array(N);
+  const sunwind = new Float32Array(N), soil = new Float32Array(N), air = new Float32Array(N), rad = new Float32Array(N);
+  const combo = new Float32Array(N);
   const tg = terrainGrid(target, scale);
   const terrainReal = !tg.sim && !ref.terrain.sim;
   const w = { ...weights, terrain: terrainReal ? weights.terrain : 0 };   // sample terrain never counts
@@ -303,8 +340,9 @@ export function computeMatch(ref, grid, target, { stat, range, scale, weights = 
     sunwind[i] = sunwindScore(ref.solar, ref.wind, target, i);
     soil[i] = soilScore(ref.soil, target, i);
     air[i] = gasScore(ref.gas, target, i);
+    rad[i] = radScore(ref.rad, target, i);
     let sum = 0, ws = 0;
-    [['temp', temp[i]], ['press', press[i]], ['terrain', terrain[i]], ['sunwind', sunwind[i]], ['soil', soil[i]], ['air', air[i]]].forEach(([k, v]) => {
+    [['temp', temp[i]], ['press', press[i]], ['terrain', terrain[i]], ['sunwind', sunwind[i]], ['soil', soil[i]], ['air', air[i]], ['rad', rad[i]]].forEach(([k, v]) => {
       if (!Number.isNaN(v) && w[k] > 0) { sum += v * w[k]; ws += w[k]; }
     });
     combo[i] = ws ? sum / ws : NaN;
@@ -323,7 +361,7 @@ export function computeMatch(ref, grid, target, { stat, range, scale, weights = 
   }
   if (best) {
     const i = best.i;
-    best.scores = { temp: temp[i], press: press[i], terrain: terrain[i], sunwind: sunwind[i], soil: soil[i], air: air[i], combo: combo[i] };
+    best.scores = { temp: temp[i], press: press[i], terrain: terrain[i], sunwind: sunwind[i], soil: soil[i], air: air[i], rad: rad[i], combo: combo[i] };
     best.values = {
       mean: grid.mean[i], high: grid.high[i], low: grid.low[i],
       pressure: pcol ? pcol[i] : NaN,
@@ -332,10 +370,11 @@ export function computeMatch(ref, grid, target, { stat, range, scale, weights = 
       terrain: Object.fromEntries(tg.keys.map((f) => [f.key, tg[f.key][i]])),
       soil: soilAt(target, i),
       gas: gasAt(target, i),
+      rad: radAt(target, i),
     };
     best.terrainKeys = tg.keys;
   }
-  return { target, temp, press, terrain, sunwind, soil, air, combo, overall: combo, best, terrainSim: !terrainReal, weights: w };
+  return { target, temp, press, terrain, sunwind, soil, air, rad, combo, overall: combo, best, terrainSim: !terrainReal, weights: w };
 }
 
 /* ---------------- night lights (Earth remoteness) from the bundled NASA Black Marble image ---------------- */
@@ -390,7 +429,6 @@ export const VARIABLES = [
     return fx(w, b === 'mars' ? 3 : 1, ' mm') || NA('—');
   } },
   { id: 'cloud', group: 'Atmosphere', label: 'Cloud cover', get: (b) => (b === 'moon' ? NA('none (no air)') : NA('not in our data yet')) },
-  { id: 'uv', group: 'Atmosphere', label: 'UV index', get: (b) => (b === 'earth' ? NA('not in our data yet') : NA('no global grid')) },
   // ---- air & gases (terrain_data/out/*_gases*.csv)
   { id: 'gasmix', group: 'Air at the surface', label: 'Main gases (share of the air)', get: (b, i) => {
     if (b === 'moon') return NA('vacuum: thin exosphere of He, Ar, Ne (LADEE)');
@@ -437,6 +475,26 @@ export const VARIABLES = [
   { id: 'soilgas', group: 'Gas at the surface', label: 'Gas held in the soil', get: (b) => NA(b === 'moon'
     ? 'solar-wind He (incl. helium-3), H, Ne (Apollo samples)' : b === 'mars' ? 'CO₂ and water stuck to grains; perchlorates release O₂'
       : 'soil air: N₂, O₂ and CO₂ from roots and microbes') },
+  // ---- UV & radiation (terrain_data/out/*_radiation*.csv); all 24-hour, year-round averages
+  ...[['uva_w_m2', 'UV-A (315–400 nm)'], ['uvb_w_m2', 'UV-B (280–315 nm)'], ['uvc_w_m2', 'UV-C (200–280 nm, germicidal)']]
+    .map(([col, label]) => ({ id: col, group: 'UV & radiation', label, get: (b, i) => {
+      if (b === 'earth' && col === 'uvc_w_m2') return { v: 0, text: '0 (absorbed by ozone)' };
+      const v = featureAt(b, col, i);
+      if (Number.isNaN(v)) return NA(b === 'earth' ? 'sea (land only)' : '—');
+      return { v, text: `${v.toFixed(v < 1 ? 2 : 1)} W/m²${b === 'mars' ? ' (est.)' : ''}` };
+    } })),
+  { id: 'dose', group: 'UV & radiation', label: 'Cosmic-ray dose at the ground', get: (b, i) => {
+    const y = featureAt(b, 'dose_msv_yr', i);
+    if (Number.isNaN(y)) return NA(b === 'earth' ? 'sea (land only)' : '—');
+    return { v: y, text: b === 'earth' ? `${y.toFixed(2)} mSv/yr (est. from altitude)` : `${(y / 365.25).toFixed(2)} mSv/day = ${Math.round(y)} mSv/yr` };
+  } },
+  { id: 'career', group: 'UV & radiation', label: `Days to NASA's ${CAREER_LIMIT_MSV} mSv career limit, unshielded`, get: (b, i) => {
+    const d = featureAt(b, 'career_days', i);
+    if (Number.isNaN(d)) return NA('—');
+    return { v: d, text: d > 3650 ? `~${Math.round(d / 365.25)} years` : `~${Math.round(d)} days` };
+  } },
+  { id: 'storms', group: 'UV & radiation', label: 'Solar storms (particle events)', get: (b) => NA(b === 'earth'
+    ? 'blocked by the magnetic field and air' : b === 'moon' ? 'no shelter: a big event can give a dangerous dose in hours' : 'thin air helps a little; a storm shelter is still needed') },
   { id: 'solar', group: 'Sun & wind', label: 'Solar energy at surface', get: (b, i) => {
     const s = solarAt(b, i);
     if (Number.isNaN(s)) return NA(b === 'earth' ? 'sea (land only)' : '—');
@@ -496,9 +554,9 @@ export const VARIABLES = [
 ];
 
 export const VARIABLE_SOURCES = {
-  earth: 'NASA POWER (temperature, pressure, water vapour) · WorldClim 2.1 (solar, wind, rain) · NOAA ETOPO 2022 (terrain) · dry-air gas mix × surface pressure · NASA POWER ozone & aerosol · ISRIC SoilGrids 2.0 (topsoil) · GLiM rock types × typical rock chemistry (estimated Fe, Si, K, Th) · NASA Black Marble (night lights)',
-  moon: 'LRO Diviner (temperature) · vacuum: gases 0 (LADEE exosphere ~3×10⁻¹⁰ Pa) · LRO LOLA (terrain) · Lunar Prospector gamma-ray spectrometer (Fe, Si, K, Th) · solar & Earth visibility calculated from position · ice index is a latitude-based estimate',
-  mars: 'Mars Climate Database 6.2 (temperature, pressure, vapour, gases, ozone, dust, frost) · Curiosity TLS (methane) · MGS MOLA (terrain) · MGS TES (thermal inertia, dust) · Mars Odyssey gamma-ray spectrometer (hydrogen, Fe, Si, K, Th, Cl) · solar calculated',
+  earth: 'NASA POWER (temperature, pressure, water vapour) · WorldClim 2.1 (solar, wind, rain) · NOAA ETOPO 2022 (terrain) · dry-air gas mix × surface pressure · NASA POWER ozone & aerosol · NASA POWER UV-A/UV-B · cosmic dose from altitude (UNSCEAR) · ISRIC SoilGrids 2.0 (topsoil) · GLiM rock types × typical rock chemistry (estimated Fe, Si, K, Th) · NASA Black Marble (night lights)',
+  moon: 'LRO Diviner (temperature) · vacuum: gases 0 (LADEE exosphere ~3×10⁻¹⁰ Pa) · Chang’e-4 LND (dose) · UV from sunlight geometry · LRO LOLA (terrain) · Lunar Prospector gamma-ray spectrometer (Fe, Si, K, Th) · solar & Earth visibility calculated from position · ice index is a latitude-based estimate',
+  mars: 'Mars Climate Database 6.2 (temperature, pressure, vapour, gases, ozone, dust, frost) · Curiosity TLS (methane) · Curiosity RAD (dose) and REMS (UV split, est.) · MGS MOLA (terrain) · MGS TES (thermal inertia, dust) · Mars Odyssey gamma-ray spectrometer (hydrogen, Fe, Si, K, Th, Cl) · solar calculated',
 };
 
 /** Whole-body constants (no single place can change these). */

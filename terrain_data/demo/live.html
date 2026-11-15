@@ -46,15 +46,16 @@ const scorer = createScorer({ features, presets, caveats }, ranges.body_range_p9
 // and gases (pipeline/36_gas_features.py); both optional
 const SOIL_COLS = ['fe_pct', 'k_pct', 'th_ppm', 'soc_g_kg'];
 const GAS_COLS = ['pp_o2_pa', 'pp_co2_pa', 'ozone_du', 'haze_tau'];
+const RAD_COLS = ['uvb_w_m2', 'uvc_w_m2', 'dose_msv_yr'];   // pipeline/37_radiation_features.py
 const withExtra = async (table, path, cols) => {
   try { const r = await fetch(path); if (r.ok) attachColumns(table, parseFeatureCSV(await r.text()), cols); } catch (e) { console.warn('extra grid', path, e); }
   return table;
 };
-const withSoil = async (table, soil, gas) => withExtra(await withExtra(table, soil, SOIL_COLS), gas, GAS_COLS);
-const earth = await withSoil(parseFeatureCSV(await get('../out/earth_features_1deg.csv')), '../out/earth_soil_1deg.csv', '../out/earth_gases_1deg.csv');
+const withSoil = async (table, soil, gas, rad) => withExtra(await withExtra(await withExtra(table, soil, SOIL_COLS), gas, GAS_COLS), rad, RAD_COLS);
+const earth = await withSoil(parseFeatureCSV(await get('../out/earth_features_1deg.csv')), '../out/earth_soil_1deg.csv', '../out/earth_gases_1deg.csv', '../out/earth_radiation_1deg.csv');
 const tables = {};
 for (const [b, g] of [['moon', '../../moon_data/moon_grid.csv'], ['mars', '../../mars_data/mars_grid.csv']])
-  tables[b] = await withSoil(attachColumns(parseFeatureCSV(await get(`../out/${b}_features.csv`)), parseFeatureCSV(await get(g))), `../out/${b}_soil.csv`, `../out/${b}_gases.csv`);
+  tables[b] = await withSoil(attachColumns(parseFeatureCSV(await get(`../out/${b}_features.csv`)), parseFeatureCSV(await get(g))), `../out/${b}_soil.csv`, `../out/${b}_gases.csv`, `../out/${b}_radiation.csv`);
 $('status').textContent = `Loaded in ${Math.round(performance.now() - t0)} ms: Earth ${earth.n} cells, Moon and Mars ${tables.mars.n} cells each.`;
 const esc = (s) => String(s).replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
 function run() {

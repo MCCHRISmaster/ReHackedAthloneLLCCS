@@ -32,6 +32,13 @@
   "barren": 0.5,
   "organic": 15,
   "extremophile": 0.7,
+  "o2_air": 3,
+  "co2_air": 3,
+  "ozone": 2.5,
+  "haze": 1.0,
+  "uvb": 1.5,
+  "uvc": 3,
+  "radiation": 3,
   "pressure": 2.5,
   "latitude": 0.4
  }

@@ -11,7 +11,7 @@ import { BODIES } from './config.js';
 import { mapHTML, mapXY } from './planet-art.js';
 import {
   MATCH_METRICS, renderScoreCanvas, VARIABLES, VARIABLE_SOURCES, BODY_CONSTANTS,
-  cellIndex, SOLAR_RANGE, WIND_RANGE, PRESS_DECADES, SOIL_FEATURES, GAS_FEATURES, featureAt,
+  cellIndex, SOLAR_RANGE, WIND_RANGE, PRESS_DECADES, SOIL_FEATURES, GAS_FEATURES, RAD_FEATURES, CAREER_LIMIT_MSV, featureAt,
 } from './match.js';
 import { matchColor } from './temperature.js';
 
@@ -45,10 +45,11 @@ export const RAIL = [
   { key: 'sunwind', icon: '☀️', name: 'Sun & wind', short: 'SUN·WIND' },
   { key: 'soil', icon: '🪨', name: 'Ground & soil', short: 'SOIL' },
   { key: 'air', icon: '🫧', name: 'Air & gases', short: 'AIR' },
+  { key: 'rad', icon: '☢️', name: 'UV & radiation', short: 'RAD' },
   { key: 'grid', icon: '▦', name: 'Data grid', short: 'DATA' },
 ];
 const RAIL_BY = Object.fromEntries(RAIL.map((r) => [r.key, r]));
-export const HEAT_KEYS = ['combo', 'temp', 'terrain', 'sunwind', 'soil', 'air'];
+export const HEAT_KEYS = ['combo', 'temp', 'terrain', 'sunwind', 'soil', 'air', 'rad'];
 const WEIGHT_PARTS = [
   { key: 'temp', label: '🌡️ Temperature' },
   { key: 'press', label: '⏲️ Pressure' },
@@ -56,6 +57,7 @@ const WEIGHT_PARTS = [
   { key: 'sunwind', label: '☀️ Sun & wind' },
   { key: 'soil', label: '🪨 Ground & soil' },
   { key: 'air', label: '🫧 Air & gases' },
+  { key: 'rad', label: '☢️ UV & radiation' },
 ];
 
 let openView = null;   // which symbol's details the right panel shows
@@ -226,6 +228,11 @@ const GAS_SOURCE = {
   moon: 'Vacuum: a surface-bounded exosphere of ~3×10⁻¹⁰ Pa (LADEE), so every gas is 0',
   mars: 'Mars Climate Database 6.2: gas shares 2 m above the ground, ozone column and dust optical depth, yearly averages',
 };
+const RAD_SOURCE = {
+  earth: 'UV-A and UV-B: NASA POWER (CERES), 2001–2025; UV-C is 0 (ozone). Cosmic-ray dose estimated from altitude (UNSCEAR 2000 / Bouville & Lowder); latitude ignored, so high tropical plateaus are overestimated',
+  moon: 'UV from sunlight geometry (no air), top-of-atmosphere spectrum. Dose: Chang’e-4 lander, 1.37 mSv/day (Zhang et al. 2020), same everywhere on the open surface',
+  mars: 'UV ESTIMATED: Mars Climate Database surface sunlight × 8% UV, split 80/15/5% UV-A/B/C as Curiosity REMS measured. Dose: Curiosity RAD at Gale (0.67 mSv/day) scaled by the air overhead',
+};
 
 function adviceFor(ref, r, stat) {
   const b = r.best, v = b.values, s = b.scores, there = name(r.target), here = name(ref.body);
@@ -264,7 +271,41 @@ function adviceFor(ref, r, stat) {
   human.push(b.overall >= 0.6
     ? 'A strong overall analog: a good candidate to shortlist for crewed EVA rehearsals and base-site training.'
     : 'A partial analog: useful for specific tests, not full mission rehearsals.');
-  return { rover, human, base: baseFor(ref, r) };
+  return { rover, human, base: baseFor(ref, r), tests: testsFor(ref, r, stat) };
+}
+
+/**
+ * 🧪 Future tests: which mission tests this Earth place can rehearse for the matched Moon/Mars spot (from the
+ * match scores), and where the rest must go. The "elsewhere" list is mostly the factors no Earth place can match
+ * (radiation, UV-C, gravity, vacuum), which are down-weighted in the scores for exactly that reason.
+ */
+function testsFor(ref, r, stat) {
+  if (ref.body !== 'earth' || r.target === 'earth') return { here: [], elsewhere: [] };
+  const b = r.best, s = b.scores, v = b.values, moon = r.target === 'moon', there = name(r.target);
+  const ok = (x) => x != null && !Number.isNaN(x);
+  const good = (x) => ok(x) && x >= 0.6;
+  const here = [], elsewhere = [];
+  if (good(s.temp)) here.push(`Heat and cold: batteries, heaters, electronics and suit thermal control (temperature ${pct(s.temp)}).`);
+  else elsewhere.push(`Heat and cold: the temperature match is only ${pct(s.temp)}; use a ${v[stat] < ref[stat] ? 'colder' : 'hotter'} site or a thermal-vacuum chamber.`);
+  if (good(s.terrain) && !r.terrainSim) here.push(`Driving and walking: navigation, wheel wear and EVA routes on similar slopes and roughness (terrain ${pct(s.terrain)}).`);
+  else if (ok(s.terrain)) elsewhere.push(`Driving and walking: terrain match ${pct(s.terrain)}; pick a site with matching slope and roughness.`);
+  if (good(s.soil)) here.push(`Ground work: drilling, sampling, spectrometer calibration and regolith processing on similar chemistry (soil ${pct(s.soil)}).`);
+  else if (ok(s.soil)) elsewhere.push(`Ground work: soil match ${pct(s.soil)}; use a ${there} regolith simulant or a site with matching rock.`);
+  const ga = ref.gas || {}, gt = v.gas || {};
+  if (!moon && ok(ga.haze) && ok(gt.haze) && Math.abs(gt.haze - ga.haze) <= 0.2) here.push(`Dust: filters, seals, airlocks and solar-panel cleaning in similar haze (optical depth ${ga.haze.toFixed(2)} vs ${gt.haze.toFixed(2)}).`);
+  const ra = ref.rad || {}, rt = v.rad || {};
+  if (ok(ra.uvb) && ok(rt.uvb) && ra.uvb > 0) {
+    const x = rt.uvb / ra.uvb;
+    if (x <= 3) here.push(`UV ageing of suits, visors and plastics outdoors: UV-B here is within ${x.toFixed(1)}× of ${there} (stretch the exposure time).`);
+    else elsewhere.push(`UV ageing: ${there} has ${x.toFixed(0)}× the UV-B; use Earth's strongest UV (Atacama, Altiplano, Tibet) or UV lamps.`);
+  }
+  // never matchable on Earth: always elsewhere
+  elsewhere.push(`UV-C: none reaches Earth's surface, so germicidal UV tests use ${there}-simulation chambers with UV-C lamps.`);
+  elsewhere.push(`Radiation (~${ok(rt.dose) ? (rt.dose / 365.25).toFixed(2) : moon ? '1.37' : '0.7'} mSv a day there): particle beams such as NASA's Space Radiation Laboratory for shielding and biology, the ISS and Artemis for crews. Earth's highest surface doses (high plateaus such as Tibet or the Antarctic plateau) are still ~30–70× lower, and most places 100× or more.`);
+  elsewhere.push(`Gravity (${moon ? '⅙' : '⅜'} g): parabolic flights, cable-offload rigs and, for long stays, the ISS or ${there} itself.`);
+  elsewhere.push(moon ? 'Vacuum and the two-week night: thermal-vacuum chambers.' : 'Thin CO₂ air (~600 Pa): Mars-pressure chambers, e.g. for oxygen plants like MOXIE.');
+  elsewhere.push('Long missions with a small crew: isolation analogs such as Antarctic stations and NASA’s CHAPEA habitat.');
+  return { here, elsewhere };
 }
 
 /**
@@ -289,11 +330,22 @@ function baseFor(ref, r) {
   } else if (moon) {
     out.push('Carbon: none in the air, so carbon for life support, plastics and plants is brought from Earth and recycled.');
   }
-  // UV and radiation shielding
+  // radiation: dose, time to the career limit, shielding (lava tubes where the data shows potential)
   const col = featureAt(r.target, 'air_column_g_cm2', r.best.i);
-  out.push(moon
-    ? 'UV and radiation: no air overhead at all (Earth has ~1,000 g/cm²). Habitats are buried or bermed with regolith, and windows, visors and greenhouses filter UV.'
-    : `UV and radiation: ${ok(col) ? col.toFixed(0) : '~16'} g/cm² of air overhead (Earth ~1,000) and ${ok(gt.ozone) ? gt.ozone.toFixed(gt.ozone < 1 ? 2 : 1) : '<1'} Dobson units of ozone (Earth ~300). Cover habitats with regolith; UV-blocking windows, visors and greenhouse panels.`);
+  const rt = v.rad || {}, ra = ref.rad || {};
+  const tube = featureAt(r.target, 'lavatube_idx', r.best.i);
+  if (ok(rt.dose)) {
+    const perDay = rt.dose / 365.25, days = CAREER_LIMIT_MSV / perDay;
+    out.push(`Radiation: ~${perDay.toFixed(2)} mSv a day from cosmic rays${ok(ra.dose) && ra.dose > 0 ? ` (${Math.round(rt.dose / ra.dose).toLocaleString()}× ${name(ref.body)} here)` : ''}${moon ? '' : ` under ${ok(col) ? col.toFixed(0) : '~16'} g/cm² of air`}. `
+      + `Unshielded, a crew reaches NASA's ${CAREER_LIMIT_MSV} mSv career limit in ~${Math.round(days)} days, so a permanent base buries or berms its habitat with regolith`
+      + `${ok(tube) && tube >= 0.3 ? ', and this spot has lava-tube potential for natural cover' : ''}, and keeps a small, heavily shielded shelter for solar storms.`);
+  }
+  // UV: what the light does to people, materials and plants
+  if (ok(rt.uvc) || ok(rt.uvb)) {
+    const xb = ok(rt.uvb) && ok(ra.uvb) && ra.uvb > 0 ? rt.uvb / ra.uvb : NaN;
+    out.push(`UV: ${ok(rt.uvc) ? rt.uvc.toFixed(2) : '—'} W/m² of UV-C (Earth: none) and ${ok(xb) ? `${xb.toFixed(1)}×` : 'more'} the UV-B here${moon ? '' : ` under ${ok(gt.ozone) ? gt.ozone.toFixed(gt.ozone < 1 ? 2 : 1) : '<1'} Dobson units of ozone (Earth ~300)`}. `
+      + 'Suits, visors, windows, cables and plastics need UV-rated materials, and greenhouses need UV-filtering panels. The same UV sterilises the surface, which helps planetary protection.');
+  }
   // dust: the part Earth CAN rehearse
   if (moon) {
     out.push(`Dust: no air, so no haze${ok(ga.haze) ? ` (here: optical depth ${ga.haze.toFixed(2)})` : ''}, but sharp, electrically charged regolith clings to everything. Airlocks, suit seals and dust removal are the main test; an Earth desert only approximates it.`);
@@ -358,6 +410,24 @@ function metricDetail(k, ref, r, stat) {
       <p class="md-text">Average similarity of iron, potassium, thorium and organic carbon (0% at ${SOIL_FEATURES.map((kk) => `${kk.range}${kk.unit}`).join(', ')} apart) → <b>${pct(s)}</b>.
         Chemistry decides what a rover's instruments see and what a base could mine; organic carbon is what makes Earth soil alive, and the Moon and Mars have essentially none.</p>
       <p class="md-src">${here}: ${esc(SOIL_SOURCE[ref.body])}<br>${there}: ${esc(SOIL_SOURCE[r.target])}</p>`;
+  }
+  if (k === 'rad') {
+    const a = ref.rad || {}, t = v.rad || {};
+    const f = (x, kk) => (x == null || Number.isNaN(x) ? '—' : `${x.toFixed(x > 0 && x < 0.1 ? 3 : kk.digits)}${kk.unit}`);
+    const wTxt = (w) => (w === 1 ? 'full' : w === 0.25 ? '¼' : String(w));
+    const head4 = `<thead><tr><th></th><th class="num">${here} (here)</th><th class="num">${there} (match)</th><th class="num">counts</th></tr></thead>`;
+    const days = (y) => (y > 0 ? CAREER_LIMIT_MSV / (y / 365.25) : NaN);
+    const dTxt = (d) => (Number.isNaN(d) ? '—' : d > 3650 ? `~${Math.round(d / 365.25)} yr` : `~${Math.round(d)} days`);
+    const ratio = a.dose > 0 && t.dose > 0 ? t.dose / a.dose : NaN;
+    return `<table class="metric-table">${head4}<tbody>
+        ${RAD_FEATURES.map((kk) => `<tr><td>${kk.label}</td><td class="num">${f(a[kk.key], kk)}</td><td class="num">${f(t[kk.key], kk)}</td><td class="num">${wTxt(kk.weight)}</td></tr>`).join('')}
+        <tr><td>To NASA's ${CAREER_LIMIT_MSV} mSv career limit, unshielded</td><td class="num">${dTxt(days(a.dose))}</td><td class="num">${dTxt(days(t.dose))}</td><td class="num">—</td></tr></tbody></table>
+      <p class="md-text">Weighted similarity of UV-B, UV-C and the cosmic-ray dose → <b>${pct(s)}</b>. All three are compared on log scales (UV-B: 0% at ~30× apart; UV-C and dose: 0% at 1000× apart).
+        ${Number.isNaN(ratio) ? '' : `The dose there is about <b>${Math.round(ratio).toLocaleString()}×</b> the dose here.`}</p>
+      <p class="md-warn"><b>Assumption:</b> UV-C and the cosmic-ray dose count only ¼. No Earth place can ever match them: Earth's ozone removes all UV-C, and its air and magnetic field keep
+        the dose at 0.3–7 mSv a year, against ~${r.target === 'moon' ? '500 on the Moon' : '210–300 on Mars'}. UV-B counts in full because Earth places really differ on it: high, dry deserts
+        (Atacama, Altiplano, Tibet) get the most and come within a few times of Mars. What can't be matched here is tested elsewhere (🧪 below) and built into the base (🏗️).</p>
+      <p class="md-src">${here}: ${esc(RAD_SOURCE[ref.body])}<br>${there}: ${esc(RAD_SOURCE[r.target])}</p>`;
   }
   if (k === 'air') {
     const a = ref.gas || {}, t = v.gas || {};
@@ -457,6 +527,9 @@ export function renderMatchPanel(m, h) {
       </div>
       <div class="mp-section rover"><h4>🚙 ROVER DEVELOPMENT</h4>${list(adv.rover)}</div>
       <div class="mp-section human"><h4>🧑‍🚀 HUMAN DEVELOPMENT</h4>${list(adv.human)}</div>
+      ${adv.tests.here.length || adv.tests.elsewhere.length ? `<div class="mp-section tests"><h4>🧪 FUTURE TESTS</h4>
+        ${adv.tests.here.length ? `<p class="md-text"><b>✅ Can be tested at ${/^Selected point/.test(ref.label) ? 'your chosen spot' : esc(ref.label)}</b></p>${list(adv.tests.here)}` : ''}
+        <p class="md-text"><b>↗ Needs another place</b> (mostly what no Earth site can match)</p>${list(adv.tests.elsewhere)}</div>` : ''}
       ${adv.base.length ? `<div class="mp-section base"><h4>🏗️ FUTURE ${BODIES[r.target].label} BASE</h4>
         <p class="md-text">What a permanent base at this spot must provide for itself, and what ${/^Selected point/.test(ref.label) ? 'your chosen spot' : esc(ref.label)} can rehearse.</p>${list(adv.base)}</div>` : ''}
       ${m.isSite ? '<button class="mini-btn wide mp-brief">SITE BRIEFING ▸</button>' : ''}

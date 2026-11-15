@@ -215,3 +215,26 @@ Run Python as `terrain_data/.venv/Scripts/python.exe`. Model was switched to Son
 - 2026-11-15 00:23 earth gases: POWER TO3/AOD_55 boxes downloaded 160, failed 0
 - 2026-11-15 00:23 earth gases: POWER TO3/AOD_55 boxes downloaded 160, failed 0
 - 2026-11-15 00:24 earth gases: POWER TO3/AOD_55 boxes downloaded 160, failed 0
+- 2026-11-15 00:26 earth gases: POWER TO3/AOD_55 boxes downloaded 160, failed 0
+- 2026-11-15 00:27 mars gases: pp_co2 231..1067 Pa, ozone nan DU max, dust tau nan mean
+- 2026-11-15 00:27 earth gases: TO3 132142 POWER points, 242..383
+- 2026-11-15 00:27 earth gases: AOD_55 37200 POWER points, 0..1.05
+- 2026-11-15 00:36 mars gases: MCD maps in cache 168/168
+- 2026-11-15 00:36 mars gases: pp_co2 231..1067 Pa, ozone 2.16 DU max, dust tau 0.28 mean
+- 2026-11-15 00:36 earth gases: TO3 132142 POWER points, 242..383
+- 2026-11-15 00:36 earth gases: AOD_55 37200 POWER points, 0..1.05
+- 2026-11-15 00:49 mars radiation: UV-B 0.61..1.99 W/m2, dose 0.56..0.84 mSv/day; sunlight from origin/main:mars_data/mars_grid.csv
+- 2026-11-15 00:49 earth gases: ALLSKY_SFC_UVA 200 POWER points, 0.185..0.204
+- 2026-11-15 00:49 earth gases: ALLSKY_SFC_UVB 200 POWER points, 0.0024..0.0029
+- 2026-11-15 00:54 mars radiation: UV-B 0.61..1.99 W/m2, dose 0.56..0.84 mSv/day; sunlight from origin/main:mars_data/mars_grid.csv
+- 2026-11-15 00:54 earth gases: ALLSKY_SFC_UVA 19600 POWER points, 0.121..0.497
+- 2026-11-15 00:55 earth gases: ALLSKY_SFC_UVB 20700 POWER points, 0.0017..0.0156
+- 2026-11-15 00:59 earth gases: POWER TO3/AOD_55 boxes downloaded 124, failed 0
+- 2026-11-15 00:59 earth gases: POWER TO3/AOD_55 boxes downloaded 124, failed 0
+- 2026-11-15 00:59 earth gases: POWER TO3/AOD_55 boxes downloaded 124, failed 0
+- 2026-11-15 00:59 earth gases: POWER TO3/AOD_55 boxes downloaded 124, failed 0
+- 2026-11-15 01:00 earth gases: POWER TO3/AOD_55 boxes downloaded 124, failed 0
+- 2026-11-15 01:00 earth gases: POWER TO3/AOD_55 boxes downloaded 124, failed 0
+- 2026-11-15 01:00 mars radiation: UV-B 0.61..1.99 W/m2, dose 0.56..0.84 mSv/day; sunlight from origin/main:mars_data/mars_grid.csv
+- 2026-11-15 01:00 earth gases: ALLSKY_SFC_UVA 37200 POWER points, 0.0828..0.497
+- 2026-11-15 01:00 earth gases: ALLSKY_SFC_UVB 37200 POWER points, 0.001..0.0156

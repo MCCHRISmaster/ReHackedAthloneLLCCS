@@ -24,16 +24,17 @@ const scorer = createScorer(config, ranges);
 // and gases (pipeline/36_gas_features.py)
 const SOIL_COLS = ['fe_pct', 'k_pct', 'th_ppm', 'soc_g_kg'];
 const GAS_COLS = ['pp_o2_pa', 'pp_co2_pa', 'ozone_du', 'haze_tau'];
+const RAD_COLS = ['uvb_w_m2', 'uvc_w_m2', 'dose_msv_yr'];   // pipeline/37_radiation_features.py
 const withExtra = (table, file, cols) => {
   const p = path.join(root, 'out', file);
   return fs.existsSync(p) ? attachColumns(table, parseFeatureCSV(read(p)), cols) : table;
 };
-const withSoil = (table, soil, gas) => withExtra(withExtra(table, soil, SOIL_COLS), gas, GAS_COLS);
-const earth = withSoil(parseFeatureCSV(read(path.join(root, 'out/earth_features_1deg.csv'))), 'earth_soil_1deg.csv', 'earth_gases_1deg.csv');
+const withSoil = (table, soil, gas, rad) => withExtra(withExtra(withExtra(table, soil, SOIL_COLS), gas, GAS_COLS), rad, RAD_COLS);
+const earth = withSoil(parseFeatureCSV(read(path.join(root, 'out/earth_features_1deg.csv'))), 'earth_soil_1deg.csv', 'earth_gases_1deg.csv', 'earth_radiation_1deg.csv');
 const tables = {};
 for (const [body, grid] of [['moon', 'moon_data/moon_grid.csv'], ['mars', 'mars_data/mars_grid.csv']]) {
   tables[body] = withSoil(attachColumns(parseFeatureCSV(read(path.join(root, `out/${body}_features.csv`))),
-    parseFeatureCSV(read(path.join(root, '..', grid)))), `${body}_soil.csv`, `${body}_gases.csv`);
+    parseFeatureCSV(read(path.join(root, '..', grid)))), `${body}_soil.csv`, `${body}_gases.csv`, `${body}_radiation.csv`);
 }
 
 const pairs = json(process.argv[2]);
