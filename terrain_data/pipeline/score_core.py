@@ -3,9 +3,9 @@
 js/score.js mirrors this file line for line; 70_validate.py proves they agree on ten pairs.
 
 Per comparison:  match = max(0, 1 - |earth - target| / range)         (BUILD_PROMPT section 6.1)
-Per dimension:   dim_score = mean of the available matches; coverage = available / total
+Per dimension:   dim_score = weighted mean of the available matches (comparison "weight", default 1); coverage = available / total
 Overall:         sum(w_d * dim_score_d) / sum(w_d) over dimensions that have data
-Loss points:     (w_d / W) * (1 - match) / n_available_d * 100, summed over a comparison's dimensions,
+Loss points:     (w_d / W) * w_c * (1 - match) / (summed w_c available in d) * 100, summed over a comparison's dimensions,
                  so overall% + all loss points = 100.
 """
 from __future__ import annotations
@@ -70,6 +70,9 @@ def eval_spec(spec: dict, cols: dict, lat: np.ndarray, body: str, ranges: dict) 
     if spec.get("log10"):
         with np.errstate(all="ignore"):
             v = np.where(v > 0, np.log10(np.where(v > 0, v, 1.0)), np.nan)
+    if spec.get("log1p"):                                # log scale that keeps 0 (vacuum) as 0
+        with np.errstate(all="ignore"):
+            v = np.where(v >= 0, np.log10(1 + np.where(v >= 0, v, 0.0)), np.nan)
     if spec.get("scale") == "body_range":
         r = ranges.get(body, {}).get(spec["col"])
         v = np.minimum(1.0, v / r) if r else nan
@@ -104,6 +107,12 @@ def match_all(cfg: dict, E: dict, T: dict) -> dict:
     return out
 
 
+def cweight(cfg: dict, cid: str) -> float:
+    """Weight of one comparison inside its dimensions (features.json "weight", default 1). Comparisons that no
+    Earth place can ever truly match (oxygen, ozone, CO2 in the air) are down-weighted, see their "weight_why"."""
+    return float(next(c for c in cfg["comparisons"] if c["id"] == cid).get("weight", 1.0))
+
+
 def aggregate(cfg: dict, M: dict, weights: dict) -> tuple[np.ndarray, dict, dict]:
     """Dimension scores, coverage and overall from per-comparison matches. All arrays share one length."""
     n = len(next(iter(M.values())))
@@ -116,8 +125,10 @@ def aggregate(cfg: dict, M: dict, weights: dict) -> tuple[np.ndarray, dict, dict
         stack = np.vstack([M[i] for i in ids])
         have = ~np.isnan(stack)
         cnt = have.sum(axis=0)
+        cw = np.array([cweight(cfg, i) for i in ids])[:, None]       # comparison weights (default 1)
+        wsum = (have * cw).sum(axis=0)
         with np.errstate(all="ignore"):
-            dim_score[d] = np.where(cnt > 0, np.where(have, stack, 0).sum(axis=0) / cnt, np.nan)
+            dim_score[d] = np.where(wsum > 0, (np.where(have, stack, 0) * cw).sum(axis=0) / wsum, np.nan)
         coverage[d] = cnt / len(ids)
     num = np.zeros(n)
     den = np.zeros(n)
@@ -148,9 +159,9 @@ def fmt_num(v: float, digits: int) -> str:
 def explain(cfg: dict, i: int, E: dict, T: dict, M: dict, show: dict, preset: str, top: int = 3) -> dict:
     """Loss list, skipped features and sentences for Earth entry i against one target."""
     w = {d: cfg["presets"][preset]["weights"].get(d, 0) for d in DIMS}
-    avail = {}
+    avail = {}                                   # summed comparison weight with data, per dimension
     for d in DIMS:
-        avail[d] = sum(1 for c in cfg["comparisons"] if d in c["dimensions"] and not math.isnan(M[c["id"]][i]))
+        avail[d] = sum(c.get("weight", 1.0) for c in cfg["comparisons"] if d in c["dimensions"] and not math.isnan(M[c["id"]][i]))
     W = sum(w[d] for d in DIMS if avail[d] > 0)
     losses, skipped = [], []
     for c in cfg["comparisons"]:
@@ -158,7 +169,7 @@ def explain(cfg: dict, i: int, E: dict, T: dict, M: dict, show: dict, preset: st
         if math.isnan(m):
             skipped.append(c["id"])
             continue
-        pts = sum((w[d] / W) * (1 - m) / avail[d] * 100 for d in c["dimensions"] if avail[d] > 0 and W > 0)
+        pts = sum((w[d] / W) * c.get("weight", 1.0) * (1 - m) / avail[d] * 100 for d in c["dimensions"] if avail[d] > 0 and W > 0)
         e, t = float(E[c["id"]][i]), float(np.atleast_1d(T[c["id"]])[0])
         sh = c.get("earth_show")
         if sh and c["id"] in show and not math.isnan(show[c["id"]][i]):

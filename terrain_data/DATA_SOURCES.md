@@ -26,6 +26,12 @@ The temperature grids for the Moon and Mars (`moon_data/moon_grid.csv`, `mars_da
 
 **Odyssey GRS water-equivalent hydrogen.** NASA Mars Odyssey Gamma Ray Spectrometer, PDS dataset ODY-M-GRS-5-ELEMENTS-V1.0, 5-degree smoothed H2O map. NASA data. https://pds-geosciences.wustl.edu/ody/ody-m-grs-5-elements-v1/ . Cite: Feldman, W. C., et al. (2004), Global distribution of near-surface hydrogen on Mars, Journal of Geophysical Research, 109, E09006.
 
+**Odyssey GRS element concentrations (iron, silicon, potassium, thorium, chlorine).** Same PDS dataset as the hydrogen map, the 5-degree smoothed maps `fe_sr_5x5`, `si_sr_5x5`, `k_sr_5x5`, `th_sr_5x5`, `cl_sr_5x5`. Used for `out/mars_soil.csv`. NASA data. https://pds-geosciences.wustl.edu/ody/ody-m-grs-5-elements-v1/ . Cite: Boynton, W. V., et al. (2007), Concentration of H, Si, Cl, K, Fe, and Th in the low- and mid-latitude regions of Mars, Journal of Geophysical Research, 112, E12S99.
+
+**Mars Climate Database v6.2, gases** (for `out/mars_gases.csv`). The same LMD web interface the team uses for temperature and pressure (no account; "moderate use", one request at a time). Variables `vmr_co2`, `vmr_n2`, `vmr_ar`, `vmr_o2`, `vmr_co`, `vmr_h2`, `vmr_he`, `vmr_o3` 2 m above the surface, `col_o3`, `dod`, `co2ice`, `surf_h2o_ice`, climatology dust scenario. Cite: Millour, E., et al. (2022), The Mars Climate Database (version 6.1), Europlanet Science Congress, EPSC2022-786, and the MCD team per https://www-mars.lmd.jussieu.fr/ .
+
+**Mars methane.** Curiosity's Tunable Laser Spectrometer, background 0.41 ppb at Gale crater, used as a constant. Cite: Webster, C. R., et al. (2018), Background levels of methane in Mars' atmosphere show strong seasonal variations, Science, 360, 1093-1096.
+
 **Global geologic map of Mars (SIM 3292).** USGS, 1:20,000,000. Public domain. https://pubs.usgs.gov/sim/3292/ . Cite: Tanaka, K. L., Skinner, J. A., Jr., Dohm, J. M., Irwin, R. P., III, Kolb, E. J., Fortezzo, C. M., Platz, T., Michael, G. G., and Hare, T. M. (2014), Geologic map of Mars: U.S. Geological Survey Scientific Investigations Map 3292, scale 1:20,000,000.
 
 **Mars Climate Database v6.2 surface temperature** (teammates, unchanged). Cite the Mars Climate Database team (LMD, Open University, ESA, CNES) per http://www-mars.lmd.jussieu.fr/ .
@@ -35,6 +41,16 @@ The temperature grids for the Moon and Mars (`moon_data/moon_grid.csv`, `mars_da
 **ETOPO 2022, 60 arc-second surface elevation.** NOAA National Centers for Environmental Information. Public domain. https://www.ncei.noaa.gov/products/etopo-global-relief-model . Cite: NOAA National Centers for Environmental Information (2022), ETOPO 2022 Global Relief Model, doi:10.25921/fd45-gt74.
 
 **GLiM, Global Lithological Map, 0.5-degree grid.** Hartmann and Moosdorf, University of Hamburg, via PANGAEA. Check the PANGAEA page for the exact licence (the data portal usually applies CC BY). https://doi.pangaea.de/10.1594/PANGAEA.788537 . Cite: Hartmann, J., and Moosdorf, N. (2012), The new global lithological map database GLiM: A representation of rock properties at the Earth surface, Geochemistry, Geophysics, Geosystems, 13, Q12004.
+
+**SoilGrids 2.0 topsoil (0-5 cm).** ISRIC World Soil Information. Clay, silt and sand content, soil organic carbon, pH in water, bulk density and coarse fragments, mean predictions at 250 m, fetched through the WCS service resampled to 0.1 degree. CC BY 4.0. https://maps.isric.org/ . Cite: Poggio, L., et al. (2021), SoilGrids 2.0: producing soil information for the globe with quantified spatial uncertainty, SOIL, 7, 217-240.
+
+**NASA POWER ozone and aerosol.** Total column ozone (`TO3`, Dobson units) and aerosol optical depth at 550 nm (`AOD_55`), climatology 2001-2025, regional endpoint, 10-degree boxes holding land only. Same credit line as the POWER temperature data above.
+
+**Earth air composition.** Dry air: N2 78.08, O2 20.95, Ar 0.934 percent (standard atmosphere); CO2 about 425 ppm and CH4 about 1,935 ppb, NOAA Global Monitoring Laboratory global means for 2025 (https://gml.noaa.gov/ccgg/trends/). Treated as the same everywhere, which is true to within about 1 percent for the main gases.
+
+**Lunar exosphere** (for the Moon's zero gas columns). Cite: Benna, M., et al. (2015), Variability of helium, neon, and argon in the lunar exosphere as observed by the LADEE NMS instrument, Geophysical Research Letters, 42, 3723-3729.
+
+**Typical rock compositions** (for the ESTIMATED Earth iron, silicon, potassium and thorium in `out/earth_soil_*.csv`). Basalt, granite, shale, sandstone and carbonate from Turekian, K. K., and Wedepohl, K. H. (1961), Distribution of the elements in some major units of the Earth's crust, Geological Society of America Bulletin, 72, 175-192. Metamorphic and unconsolidated cells use the upper continental crust of Rudnick, R. L., and Gao, S. (2003), Composition of the continental crust, Treatise on Geochemistry, 3, 1-64. The class-to-composition table is in `pipeline/35_soil_features.py` (`ROCK_CHEM`).
 
 **Holocene volcanoes.** Smithsonian Institution, Global Volcanism Program, Volcanoes of the World. Free to use with citation. https://volcano.si.edu/ . Cite: Global Volcanism Program, Volcanoes of the World database, Smithsonian Institution, accessed 2026-11-14 (use the version and DOI shown on the Smithsonian page for that date).
 

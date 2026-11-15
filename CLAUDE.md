@@ -32,6 +32,21 @@ Local `main` (not yet pushed) has `heat-map` and `Graphical_Elements` merged in.
 - **This resolves the "placeholder Moon/Mars data" weakness described above.**
 - Run: `node prototype/server.js analog-atlas/analog-atlas 8002`, then open http://localhost:8002.
 
+### Ground and soil composition (`Ground_and_Soil_Composition_Data` branch)
+- `terrain_data/pipeline/35_soil_features.py` → `terrain_data/out/moon_soil.csv`, `mars_soil.csv`, `earth_soil_1deg.csv`, `earth_soil_2deg.csv` (same 2°/1° layout as the `*_features.csv` files).
+  - Moon: Lunar Prospector GRS (Fe, Si, K, Th, oxides). Mars: Odyssey GRS (Fe, Si, K, Th, Cl). Earth: SoilGrids 2.0 topsoil (organic carbon, clay/silt/sand, pH, bulk density, stones) + Fe/Si/K/Th **estimated** from GLiM rock type.
+- Scored in `terrain_data/config/features.json` as iron, potassium, thorium (geology) and organic carbon (habitability); sites/matches rescored.
+- Globe: 🪨 **Ground & soil** symbol in the right rail and combo slider, plus a "Ground & soil" group in the data grid (`match.js` `SOIL_FILES`/`soilAt`, loaded in `main.js` `loadTerrain`).
+- Rebuild: `terrain_data\.venv\Scripts\python.exe terrain_data\pipeline\run_all.py --phase soil`, then `--phase score`, then `--phase validate` (needs `node` on PATH).
+- On some Windows machines port 8000 is reserved (EACCES); use `node prototype/server.js . 8002`.
+
+### Air, atmosphere and surface gases (same branch, on top of soil)
+- `terrain_data/pipeline/36_gas_features.py` → `terrain_data/out/{moon,mars}_gases.csv`, `earth_gases_{1,2}deg.csv`. Separate files on purpose: `main` rewrote every row of the team `*_grid.csv` files, so new grid columns there would conflict.
+  - Mars: Mars Climate Database 6.2 (gas shares at 2 m, ozone column, dust, CO₂/water frost). Earth: dry-air constants × surface pressure, NASA POWER `TO3` + `AOD_55` (land boxes). Moon: 0 (vacuum).
+- Scored: oxygen and CO₂ partial pressure, ozone (all `log1p`, a new spec flag in `score_core.py` / `score.js`) at **¼ weight** (new optional `"weight"` per comparison: no Earth place can ever match them), and dust & haze at full weight. Assumption stated in caveats.json, the globe Air panel and METHODS.md.
+- Globe: 🏗️ **Future base** section in the match panel: what a Moon/Mars base at the matched spot must provide itself (oxygen, CO₂ as a resource, UV/radiation shielding, pressure, frost) and what the Earth place can rehearse (dust).
+- Globe: 🫧 **Air & gases** rail symbol + combo slider; data-grid groups "Air at the surface", "Whole atmosphere", "Gas at the surface" (the old temperature-based Mars CO₂-frost row now uses MCD frost maps).
+
 ## The challenge
 NASA Space Apps 2026: **"Permanent Moon Base Locations and Mars."** Use open NASA and other space-agency data
 to find and describe Earth places that are good stand-ins ("analogs") for candidate Moon-base and Mars

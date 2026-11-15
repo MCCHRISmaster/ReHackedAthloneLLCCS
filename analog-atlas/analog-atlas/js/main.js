@@ -460,6 +460,7 @@ async function loadGrids() {
   for (const body of Object.keys(temp.GRID_FILES)) {
     try {
       state.temp.grids[body] = await temp.loadGrid(body);
+      match.registerGridColumns(body, state.temp.grids[body]);   // solar, wind, dust columns from the team grids
     } catch (err) {
       console.error(err);
       state.temp.gridError = `Couldn't load the ${body} temperature grid`;
@@ -480,6 +481,26 @@ async function loadTerrain() {
       match.registerTerrain(body, temp.parseCSV(await res.text()), ranges);
     } catch (err) {
       console.warn('terrain data not loaded, using sample values:', err.message);
+    }
+  }
+  // ground & soil composition (after terrain: it adds columns to the same feature store)
+  for (const [body, path] of Object.entries(match.SOIL_FILES)) {
+    try {
+      const res = await fetch(path);
+      if (!res.ok) throw new Error(`${path}: HTTP ${res.status}`);
+      match.registerSoil(body, temp.parseCSV(await res.text()));
+    } catch (err) {
+      console.warn('soil data not loaded, soil score left out:', err.message);
+    }
+  }
+  // air & gases (same feature store)
+  for (const [body, path] of Object.entries(match.GAS_FILES)) {
+    try {
+      const res = await fetch(path);
+      if (!res.ok) throw new Error(`${path}: HTTP ${res.status}`);
+      match.registerGas(body, temp.parseCSV(await res.text()));
+    } catch (err) {
+      console.warn('gas data not loaded, air score left out:', err.message);
     }
   }
   // re-measure the current location's terrain with the real data and rescore everything

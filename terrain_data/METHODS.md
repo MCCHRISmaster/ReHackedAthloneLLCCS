@@ -73,6 +73,46 @@ Not built: Mars dust-storm counts (MDAD), TES albedo, and the Mars cave catalog.
 | `solar_idx` | `srad_kj_m2_day` / 30,000, capped at 1. Earth sunlight is measured surface radiation; Moon and Mars use the geometric proxy above, so this comparison is the roughest in the list. | thermal |
 | `temp_mean_c`, `temp_high_c`, `temp_low_c` | NASA POWER climatology (surface skin temperature, 2001 to 2025), the same product and method as the team's `earth_grid.csv`, completed over every 10-degree box, ocean included, so the 2-degree grid has no blank cell and passes the team checker. Over the sea the value is the sea-surface skin temperature; scoring only uses land cells. | thermal |
 
+### Ground and soil composition (all bodies, `out/*_soil*.csv`)
+
+Built by `pipeline/35_soil_features.py` (`run_all.py --phase soil`) into separate files, so a failed soil download never touches the terrain outputs. Every loader merges them by cell: `score_data.py` (Python scorer), `js/test_score.mjs` and `demo/live.html` (browser scorer), and the globe (`analog-atlas/.../js/main.js`). The common basis is **element concentration in the top tens of centimetres**, which is what orbital gamma-ray spectrometers see.
+
+| Columns | Source and method | Dimension |
+|---|---|---|
+| Moon `fe_pct`, `si_pct`, `k_pct`, `th_ppm` (+ `mgo_pct`, `al2o3_pct`, `sio2_pct`, `cao_pct`, `tio2_pct`, `feo_pct`) | The same Lunar Prospector 2-degree product as above, all columns kept. Oxides converted to elements: Fe = 0.777 x FeO, Si = 0.467 x SiO2, K wt% = K ppm / 10,000. Exactly 0 is a fit failure (1 FeO pixel, 432 K pixels) and is left blank. | geology |
+| Mars `fe_pct`, `si_pct`, `k_pct`, `th_ppm`, `cl_pct` | Mars Odyssey GRS element maps (Boynton et al. 2007), 5-degree smoothed, bilinearly interpolated to 2-degree centres as for hydrogen. Fe, Si and Cl cover about 55 percent of cells (mid-latitudes), K and Th about 98 percent. | geology |
+| Earth `clay_pct`, `silt_pct`, `sand_pct`, `soc_g_kg`, `ph_h2o`, `bdod_g_cm3`, `cfvo_pct` | ISRIC SoilGrids 2.0, topsoil 0 to 5 cm mean, fetched from the WCS resampled to 0.1 degree, averaged into 1 and 2-degree cells. The WCS output has no nodata tag, so 0 means sea, ice or rock (real topsoil carbon never goes below 1 g/kg). | habitability (organic carbon), display |
+| Earth `fe_pct`, `si_pct`, `k_pct`, `th_ppm`, `chem_cover_pct` | **Estimate, not a measurement.** No global map of Earth soil iron or thorium exists. Each cell's GLiM rock-type shares are multiplied by a typical composition per type (`ROCK_CHEM` in the script: basalt, granite, shale, sandstone and carbonate from Turekian and Wedepohl 1961, metamorphic and unconsolidated from Rudnick and Gao's upper crust). Blank when less than 20 percent of the cell has a rock class. The three `lith_override` basalt islands get the basalt row. | geology |
+
+Four comparisons use them (`config/features.json`): **iron** (range 8 wt%), **potassium** (2 wt%) and **thorium** (8 ppm) under geology, and **organic carbon** (15 g/kg, Earth capped at 30; Moon and Mars are the absence value 0) under habitability. The globe shows them as the 🪨 Ground & soil symbol, with the extra columns in the data grid.
+
+What this shows: Mars soil is 11 to 19 percent iron, while the most iron-rich common rock on Earth (basalt) is about 8.7 percent, so no Earth place matches Mars on iron. Lunar highlands (about 3 to 4 percent iron, low potassium) match anorthosite and granite country well, and lunar mare matches basalt. Limits: the Earth values come from bedrock, not soil; ore bodies such as Río Tinto's iron-rich rocks are far smaller than a 1-degree cell; a layered mafic intrusion such as Stillwater counts as "plutonic" and gets granite-like chemistry.
+
+### Air, atmosphere and gases at the surface (all bodies, `out/*_gases*.csv`)
+
+Built by `pipeline/36_gas_features.py` (`run_all.py --phase gases`; `--mars` and `--earth` download separately and can run side by side) into separate files merged by cell, like the soil grids. The team grids (`*_data/*_grid.csv`) are only read: their `pressure_pa` is the base for the partial pressures.
+
+| Group | Columns | Earth | Mars | Moon |
+|---|---|---|---|---|
+| Surface air | `co2_pct`, `n2_pct`, `o2_pct`, `ar_pct`; `pp_*_pa` = share x pressure | Dry-air constants x surface pressure (NASA POWER at 2 degrees; standard atmosphere from elevation at 1 degree), so only altitude changes them | MCD shares 2 m above the ground, 12 seasons weighted by length | 0 (vacuum) |
+| Trace gases (display) | `co_ppm`, `h2_ppm`, `he_ppm`, `o3_ppb`, `ch4_ppb` | Typical / global-mean constants | MCD; methane is Curiosity's 0.41 ppb at Gale, a constant | blank |
+| Whole atmosphere | `air_column_g_cm2` = pressure / gravity; `ozone_du`; `haze_tau` | POWER `TO3`, `AOD_55` (land boxes only) | MCD `col_o3` (1 Dobson unit = 2.1415e-5 kg/m2), `dod` | 0 |
+| Gas at the surface | `co2_frost_kg_m2`, `co2_frost_months` (months above 1 kg/m2), `h2o_frost_kg_m2` | CO2 frost 0 | MCD `co2ice`, `surf_h2o_ice` | not mapped (notes in the globe) |
+
+Four comparisons use them, on log10(1 + value) so the Moon's vacuum still has a value (`log1p` in `features.json`, implemented in both scorers): **oxygen in the air** (habitability, range 3 decades), **carbon dioxide in the air** (operations, 3 decades), **ozone overhead** (habitability, 2.5 decades) and, on a linear scale, **dust and haze** (dust, optical depth range 1). Nitrogen, argon, the air column, trace gases and frost are shown in the globe's data grid but not scored: the air column largely repeats the pressure comparison, and radiation is a "never scored" caveat.
+
+**Assumption: what can never be matched counts a quarter.** Oxygen, carbon dioxide and ozone carry `"weight": 0.25` in `features.json` (each comparison's share inside its dimension; every other comparison has weight 1). The reason is written next to each one (`weight_why`). No Earth place can ever truly match them: everywhere on Earth has about 21 kPa of oxygen (about 11 kPa on the highest plateaus), about 40 Pa of CO2 and about 300 Dobson units of ozone. Mars has about 1 Pa of oxygen, about 13 times Earth's CO2 and under 1 Dobson unit of ozone, and the Moon has none of the three. In full weight they would only lower every Earth place by almost the same amount and push real differences (terrain, dust, temperature) out of the score. They are not dropped either, because they are exactly where every analog breaks down. They are stated three times: in the caveats on every card (`caveats.json`), in the globe's Air panel ("counts ¼") and in the globe's **🏗️ Future base** section.
+
+**Thinking of the future base.** The gas gaps are reframed as what a permanent base at the matched spot must provide for itself:
+- **Oxygen.** On the Moon it is made from regolith, which is about 45 percent oxygen by mass. On Mars it is made from the CO2 air, as MOXIE showed.
+- **Carbon dioxide.** On Mars it is a resource: oxygen, plus methane fuel with hydrogen from ice. On the Moon, carbon has to be brought from Earth and recycled.
+- **UV and radiation shielding.** Regolith cover, and UV-blocking windows, visors and greenhouses.
+- **Habitat pressure.** The base holds its own breathable atmosphere against vacuum or the thin Martian air.
+
+Next to each gap is what the Earth place can still rehearse. The one gas factor Earth places really differ on, dust and haze, keeps full weight. The scored numbers stay similarity, not suitability; the base section is written from the target's data with fixed rules (`baseFor` in `analog-atlas/.../js/matchui.js`).
+
+What this shows: Mars's air is 95 percent CO2 at about 600 Pa, so its CO2 pressure is about 13 times Earth's while its oxygen (about 1 Pa) and ozone (under 1 Dobson unit, against about 300) are close to the Moon's zero. Oxygen and ozone therefore score near 0 for every Earth place, which is why they count a quarter. Dust and haze is the gas comparison that separates Earth places: the Sahara and Arabia (optical depth 0.4 to 0.8) sit close to Mars's dusty air, while the Antarctic plateau and Arctic (under 0.05) sit close to the Moon. Mars's winter poles show the CO2 cycle: up to a third of the CO2 freezes onto the ground, so nitrogen and argon there rise to over 20 percent of the air.
+
 **Why the plan changed.** The build prompt called for NASA NEO products (vegetation, aerosol, snow, MODIS land temperature). NEO no longer serves data files: every data address returns a web page instead. The vegetation, dust and snow features became the climate proxies above, and the MODIS temperature fallback became a full NASA POWER pull. Anyone who restores a real NDVI or aerosol product should replace `barren_pct` and `dust_idx` first.
 
 ## 4. The score
@@ -83,16 +123,16 @@ For each comparison `f`, with Earth value `e` and target value `t` already in co
 match_f = max(0, 1 - |e - t| / range_f)
 ```
 
-If either side has no value, the comparison is skipped. The fixed ranges, the way each body's value is built, and each comparison's dimensions are in `config/features.json` (21 comparisons). A comparison can count toward more than one dimension (slope counts for terrain and operations; dryness for habitability and dust).
+If either side has no value, the comparison is skipped. The fixed ranges, the way each body's value is built, and each comparison's dimensions are in `config/features.json` (30 comparisons, 4 from the soil grids and 4 from the gas grids). A comparison can count toward more than one dimension (slope counts for terrain and operations; dryness for habitability and dust).
 
 - **Dimension score** = mean of the available matches in that dimension. **Coverage** = available / total in that dimension.
-- **Overall** = sum(weight x dimension score) / sum(weight), over dimensions that have data. It is shown on 0 to 100 and needs at least 10 of the 21 comparisons to have data, otherwise it is shown as unavailable.
+- **Overall** = sum(weight x dimension score) / sum(weight), over dimensions that have data. It is shown on 0 to 100 and needs at least 10 of the 30 comparisons to have data, otherwise it is shown as unavailable.
 - **Presets** (`config/presets.json`): raw similarity (equal weights), crewed mission, base construction, rover landing. The weights are a human decision recorded in the build prompt.
 - **Losses**: each comparison's lost points are `(weight_d / W) x (1 - match) / n_d x 100`, summed over its dimensions, where `W` is the weight of the dimensions with data. Overall plus all lost points is exactly 100. The top three become the plain sentences on the card.
 - **Alternatives** ("cut your losses"): the best-scoring Earth 1-degree land cell for the same target and preset, in the same country, within 1,000 km, and worldwide.
 - **Where the value comes from for each body** is one line per comparison in `features.json`. Constants (for example the Moon is dry, dusty, windless and barren) are the "absence value": Earth's own value is then the penalty. Tuning of ranges and constants is listed at the end of this file.
 
-Named Earth sites are scored at the 1-degree cell that holds them. A site in a cell with 1 to 25 percent land (islands) uses that cell's own values from `work/earth_features_all.npz`. If a site still has no data it would borrow the nearest land cell within 250 km (none needed it in the final run). Three tiny basalt islands (Timanfaya, the Corona lava tube, Vulcano) have no GLiM class, so their rock type is set to basaltic by hand, marked `lith_override` in the curated table. Sites flagged acidic, hypersaline, hydrothermal or hyperarid get an extremophile value of 1.
+Named Earth sites are scored at the 1-degree cell that holds them. A site in a cell with 1 to 25 percent land (islands) uses that cell's own values from `work/earth_features_all.npz`. That file is a cache that is not committed; on a machine without it, the scorer reuses those sites' values from the last exported `out/sites.json` (which are the same cell values), so a rescore on a fresh clone gives the same island numbers. If a site still has no data it would borrow the nearest land cell within 250 km (none needed it in the final run). Three tiny basalt islands (Timanfaya, the Corona lava tube, Vulcano) have no GLiM class, so their rock type is set to basaltic by hand, marked `lith_override` in the curated table. Sites flagged acidic, hypersaline, hydrothermal or hyperarid get an extremophile value of 1.
 
 `pipeline/score_core.py` and `js/score.js` implement the same rules. `pipeline/70_validate.py` runs both on ten pairs; they agree to better than one part in ten million.
 

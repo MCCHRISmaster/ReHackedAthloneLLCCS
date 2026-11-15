@@ -14,6 +14,9 @@
   "cratering": 0.6,
   "basaltic": 0.6,
   "crystalline": 0.6,
+  "iron": 8,
+  "potassium": 2,
+  "thorium": 8,
   "volcanic": 1.0,
   "temp_mean": 40,
   "temp_high": 40,
@@ -27,6 +30,7 @@
   "karst": 0.8,
   "lavatube": 0.6,
   "barren": 0.5,
+  "organic": 15,
   "extremophile": 0.7,
   "pressure": 2.5,
   "latitude": 0.4

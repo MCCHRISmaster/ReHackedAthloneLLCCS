@@ -1,15 +1,17 @@
 {
-  "_note": "Fixed 'Earth cannot reproduce this' text per target body. These are never scored (decision 9). Shown on every card.",
+  "_note": "Fixed 'Earth cannot reproduce this' text per target body, shown on every card. These are never scored (decision 9), except breathable air and UV shielding: oxygen, CO2 and ozone are scored at a quarter weight (features.json \"weight\"), because no Earth place can ever truly match them. Each line also says what a future base must provide instead.",
   "moon": [
     "Gravity: the Moon pulls at about 1.6 m/s2, one sixth of Earth. No Earth site can reproduce it, so walking, digging and dust behaviour differ.",
     "Vacuum: the Moon has almost no atmosphere. Earth's air changes heat flow, dust motion and how equipment cools.",
     "Radiation: with no air or magnetic field, the surface takes cosmic rays and solar particles that Earth's atmosphere blocks.",
-    "Lunar night: dark and cold for about two weeks at a time everywhere except a few polar peaks. No Earth site matches that cycle."
+    "Lunar night: dark and cold for about two weeks at a time everywhere except a few polar peaks. No Earth site matches that cycle.",
+    "Air and UV shield: none. Oxygen and ozone count only a quarter as much as other comparisons, because no Earth site can match a vacuum. A lunar base must make all its oxygen, for example from regolith (oxygen is about 45 percent of lunar rock by mass), and shield crews and plants from unfiltered UV."
   ],
   "mars": [
     "Gravity: Mars pulls at about 3.7 m/s2, 38 percent of Earth. Earth cannot reproduce it outside a short parabolic flight.",
     "Thin atmosphere: Mars surface pressure is under one percent of Earth's and almost all carbon dioxide, so wind, dust and heat transfer behave differently.",
     "Radiation: Mars has no global magnetic field and a thin atmosphere, so the surface dose is far higher than anywhere on Earth.",
-    "Soil chemistry: Martian soil carries perchlorates that most Earth analog soils lack."
+    "Soil chemistry: Martian soil carries perchlorates that most Earth analog soils lack.",
+    "Air and UV shield: the air is 95 percent CO2 with about 1 Pa of oxygen and almost no ozone. Oxygen, CO2 and ozone count only a quarter as much as other comparisons, because no Earth site can match them. A Mars base must make its oxygen from that CO2 (Perseverance's MOXIE made 122 g in 2021 to 2023) and block UV in suits, windows and greenhouses."
   ]
 }

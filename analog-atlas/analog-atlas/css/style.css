@@ -644,6 +644,7 @@ body.simple:not(.tactical) .globe-glow { display: block; }
 .mp-section ul { margin: 4px 0 0; padding-left: 18px; font-size: 13px; }
 .mp-section li { margin: 3px 0; }
 .mp-section.rover { border-left-color: #4fc3f7; }
+.mp-section.base { border-left-color: #ffb340; }
 .mp-section.human { border-left-color: #ff7043; }
 
 @media (max-width: 820px) { .match-bar { top: 58px; } .left-col { top: auto; } }
@@ -803,8 +804,9 @@ body:not(.right-collapsed) .right-column { right: 360px; }
   .right-column { top: 104px; gap: 8px; }
   .right-column .side-tab.right { writing-mode: horizontal-tb; padding: 6px 4px; gap: 4px; flex-direction: column; letter-spacing: 0.1em; font-size: 10px; }
   .right-column .side-tab.right .side-label { font-size: 10px; }
-  .rail-metric { padding: 4px 2px; }
-  .rail-icon { font-size: 18px; }
+  .rail-metrics { gap: 4px; }   /* seven symbols (with soil and air) still fit at 768 px high */
+  .rail-metric { padding: 2px 2px; gap: 0; }
+  .rail-icon { font-size: 18px; line-height: 1.05; }
   .rail-pct { font-size: 11px; }
   .right-column .hud-controls { gap: 5px; }
   .right-column .hud-controls .ctl { width: 36px; height: 34px; font-size: 17px; }

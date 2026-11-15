@@ -166,3 +166,52 @@ Run Python as `terrain_data/.venv/Scripts/python.exe`. Model was switched to Son
 - Athlone: 44 raw vs Jezero, 19 vs Shackleton; biggest loss is rainfall (1,058 mm a year vs bone dry). All 132 sites.json entries carry eight score keys.
 - NOT DONE, needs the operator: wiring sites.json and the eighth bar into the globe (teammate files; text patch in HANDOFF.md), pushing the branch, opening a pull request.
 - Detail pages: http://localhost:8000/terrain_data/demo/index.html?id=athlone and .../demo/live.html (server: node prototype/server.js . 8000 from the repo root).
+- 2026-11-14 23:19 downloaded moon_lpgrs_high1_elem_abundance_2deg.tab (9.9 MB) from https://pds-geosciences.wustl.edu/lunar/lp-l-grs-5-elem-abundance-v1/lp_9001/data/lpgrs_high1_elem_abundance_2deg.tab
+- 2026-11-14 23:19 moon soil (LP GRS): Fe 0.0..23.9 wt%, Th 0.0..11.6 ppm, 0 cells uncovered
+- 2026-11-14 23:19 downloaded mars_fe_5x5.tab (0.2 MB) from https://pds-geosciences.wustl.edu/ody/ody-m-grs-5-elements-v1/odgm_xxxx/data/smoothed/fe_sr_5x5.tab
+- 2026-11-14 23:19 downloaded mars_si_5x5.tab (0.2 MB) from https://pds-geosciences.wustl.edu/ody/ody-m-grs-5-elements-v1/odgm_xxxx/data/smoothed/si_sr_5x5.tab
+- 2026-11-14 23:19 downloaded mars_k_5x5.tab (0.2 MB) from https://pds-geosciences.wustl.edu/ody/ody-m-grs-5-elements-v1/odgm_xxxx/data/smoothed/k_sr_5x5.tab
+- 2026-11-14 23:19 downloaded mars_th_5x5.tab (0.2 MB) from https://pds-geosciences.wustl.edu/ody/ody-m-grs-5-elements-v1/odgm_xxxx/data/smoothed/th_sr_5x5.tab
+- 2026-11-14 23:19 downloaded mars_cl_5x5.tab (0.2 MB) from https://pds-geosciences.wustl.edu/ody/ody-m-grs-5-elements-v1/odgm_xxxx/data/smoothed/cl_sr_5x5.tab
+- 2026-11-14 23:19 mars soil (Odyssey GRS): fe_pct 10.89..19.17 (7326 blank), si_pct 18.15..22.05 (7326 blank), k_pct 0.07..0.56 (360 blank), th_ppm 0.17..0.94 (360 blank), cl_pct 0.22..0.79 (7326 blank)
+- 2026-11-14 23:19 downloaded soilgrids_clay_0-5cm_3600.tif (2.2 MB) from https://maps.isric.org/mapserv?map=/map/clay.map&SERVICE=WCS&VERSION=2.0.1&REQUEST=GetCoverage&COVERAGEID=clay_0-5cm_mean&FORMAT=GEOTIFF_INT16&SUBSET=long(-180,180)&SUBSET=lat(-90,90)&SUBSETTINGCRS=http://www.opengis.net/def/crs/EPSG/0/4326&OUTPUTCRS=http://www.opengis.net/def/crs/EPSG/0/4326&SCALESIZE=long(3600),lat(1800)
+- 2026-11-14 23:19 earth SoilGrids clay 0-5 cm: soilgrids_clay_0-5cm_3600.tif, 2.87..56.45, 18072 1-degree cells
+- 2026-11-14 23:19 downloaded soilgrids_silt_0-5cm_3600.tif (2.3 MB) from https://maps.isric.org/mapserv?map=/map/silt.map&SERVICE=WCS&VERSION=2.0.1&REQUEST=GetCoverage&COVERAGEID=silt_0-5cm_mean&FORMAT=GEOTIFF_INT16&SUBSET=long(-180,180)&SUBSET=lat(-90,90)&SUBSETTINGCRS=http://www.opengis.net/def/crs/EPSG/0/4326&OUTPUTCRS=http://www.opengis.net/def/crs/EPSG/0/4326&SCALESIZE=long(3600),lat(1800)
+- 2026-11-14 23:19 earth SoilGrids silt 0-5 cm: soilgrids_silt_0-5cm_3600.tif, 4.49..67.81, 18072 1-degree cells
+- 2026-11-14 23:19 downloaded soilgrids_sand_0-5cm_3600.tif (2.4 MB) from https://maps.isric.org/mapserv?map=/map/sand.map&SERVICE=WCS&VERSION=2.0.1&REQUEST=GetCoverage&COVERAGEID=sand_0-5cm_mean&FORMAT=GEOTIFF_INT16&SUBSET=long(-180,180)&SUBSET=lat(-90,90)&SUBSETTINGCRS=http://www.opengis.net/def/crs/EPSG/0/4326&OUTPUTCRS=http://www.opengis.net/def/crs/EPSG/0/4326&SCALESIZE=long(3600),lat(1800)
+- 2026-11-14 23:19 earth SoilGrids sand 0-5 cm: soilgrids_sand_0-5cm_3600.tif, 3.63..91.96, 18072 1-degree cells
+- 2026-11-14 23:19 downloaded soilgrids_soc_0-5cm_3600.tif (2.7 MB) from https://maps.isric.org/mapserv?map=/map/soc.map&SERVICE=WCS&VERSION=2.0.1&REQUEST=GetCoverage&COVERAGEID=soc_0-5cm_mean&FORMAT=GEOTIFF_INT16&SUBSET=long(-180,180)&SUBSET=lat(-90,90)&SUBSETTINGCRS=http://www.opengis.net/def/crs/EPSG/0/4326&OUTPUTCRS=http://www.opengis.net/def/crs/EPSG/0/4326&SCALESIZE=long(3600),lat(1800)
+- 2026-11-14 23:19 earth SoilGrids soc 0-5 cm: soilgrids_soc_0-5cm_3600.tif, 0.00..365.67, 50040 1-degree cells
+- 2026-11-14 23:19 downloaded soilgrids_phh2o_0-5cm_3600.tif (1.1 MB) from https://maps.isric.org/mapserv?map=/map/phh2o.map&SERVICE=WCS&VERSION=2.0.1&REQUEST=GetCoverage&COVERAGEID=phh2o_0-5cm_mean&FORMAT=GEOTIFF_INT16&SUBSET=long(-180,180)&SUBSET=lat(-90,90)&SUBSETTINGCRS=http://www.opengis.net/def/crs/EPSG/0/4326&OUTPUTCRS=http://www.opengis.net/def/crs/EPSG/0/4326&SCALESIZE=long(3600),lat(1800)
+- 2026-11-14 23:19 earth SoilGrids phh2o 0-5 cm: soilgrids_phh2o_0-5cm_3600.tif, 3.85..8.90, 18068 1-degree cells
+- 2026-11-14 23:20 downloaded soilgrids_bdod_0-5cm_3600.tif (1.5 MB) from https://maps.isric.org/mapserv?map=/map/bdod.map&SERVICE=WCS&VERSION=2.0.1&REQUEST=GetCoverage&COVERAGEID=bdod_0-5cm_mean&FORMAT=GEOTIFF_INT16&SUBSET=long(-180,180)&SUBSET=lat(-90,90)&SUBSETTINGCRS=http://www.opengis.net/def/crs/EPSG/0/4326&OUTPUTCRS=http://www.opengis.net/def/crs/EPSG/0/4326&SCALESIZE=long(3600),lat(1800)
+- 2026-11-14 23:20 earth SoilGrids bdod 0-5 cm: soilgrids_bdod_0-5cm_3600.tif, 0.34..1.66, 18019 1-degree cells
+- 2026-11-14 23:20 downloaded soilgrids_cfvo_0-5cm_3600.tif (2.2 MB) from https://maps.isric.org/mapserv?map=/map/cfvo.map&SERVICE=WCS&VERSION=2.0.1&REQUEST=GetCoverage&COVERAGEID=cfvo_0-5cm_mean&FORMAT=GEOTIFF_INT16&SUBSET=long(-180,180)&SUBSET=lat(-90,90)&SUBSETTINGCRS=http://www.opengis.net/def/crs/EPSG/0/4326&OUTPUTCRS=http://www.opengis.net/def/crs/EPSG/0/4326&SCALESIZE=long(3600),lat(1800)
+- 2026-11-14 23:20 earth SoilGrids cfvo 0-5 cm: soilgrids_cfvo_0-5cm_3600.tif, 0.26..39.22, 18069 1-degree cells
+- 2026-11-14 23:20 moon soil (LP GRS): Fe 0.0..23.9 wt%, Th 0.0..11.6 ppm, 0 cells uncovered
+- 2026-11-14 23:20 mars soil (Odyssey GRS): fe_pct 10.89..19.17 (7326 blank), si_pct 18.15..22.05 (7326 blank), k_pct 0.07..0.56 (360 blank), th_ppm 0.17..0.94 (360 blank), cl_pct 0.22..0.79 (7326 blank)
+- 2026-11-14 23:21 earth SoilGrids clay 0-5 cm: soilgrids_clay_0-5cm_3600.tif, 2.87..56.45, 18072 1-degree cells
+- 2026-11-14 23:21 earth SoilGrids silt 0-5 cm: soilgrids_silt_0-5cm_3600.tif, 4.49..67.81, 18072 1-degree cells
+- 2026-11-14 23:21 earth SoilGrids sand 0-5 cm: soilgrids_sand_0-5cm_3600.tif, 3.63..91.96, 18072 1-degree cells
+- 2026-11-14 23:21 earth SoilGrids soc 0-5 cm: soilgrids_soc_0-5cm_3600.tif, 1.48..380.10, 18019 1-degree cells
+- 2026-11-14 23:21 earth SoilGrids phh2o 0-5 cm: soilgrids_phh2o_0-5cm_3600.tif, 3.85..8.90, 18068 1-degree cells
+- 2026-11-14 23:21 earth SoilGrids bdod 0-5 cm: soilgrids_bdod_0-5cm_3600.tif, 0.34..1.66, 18019 1-degree cells
+- 2026-11-14 23:21 earth SoilGrids cfvo 0-5 cm: soilgrids_cfvo_0-5cm_3600.tif, 0.26..39.22, 18069 1-degree cells
+- 2026-11-14 23:21 moon soil (LP GRS): Fe 0.2..23.9 wt%, Th 0.0..11.6 ppm, 1 cells uncovered
+- 2026-11-14 23:21 mars soil (Odyssey GRS): fe_pct 10.89..19.17 (7326 blank), si_pct 18.15..22.05 (7326 blank), k_pct 0.07..0.56 (360 blank), th_ppm 0.17..0.94 (360 blank), cl_pct 0.22..0.79 (7326 blank)
+- 2026-11-14 23:21 earth SoilGrids clay 0-5 cm: soilgrids_clay_0-5cm_3600.tif, 2.87..56.45, 18072 1-degree cells
+- 2026-11-14 23:21 earth SoilGrids silt 0-5 cm: soilgrids_silt_0-5cm_3600.tif, 4.49..67.81, 18072 1-degree cells
+- 2026-11-14 23:21 earth SoilGrids sand 0-5 cm: soilgrids_sand_0-5cm_3600.tif, 3.63..91.96, 18072 1-degree cells
+- 2026-11-14 23:21 earth SoilGrids soc 0-5 cm: soilgrids_soc_0-5cm_3600.tif, 1.48..380.10, 18019 1-degree cells
+- 2026-11-14 23:21 earth SoilGrids phh2o 0-5 cm: soilgrids_phh2o_0-5cm_3600.tif, 3.85..8.90, 18068 1-degree cells
+- 2026-11-14 23:21 earth SoilGrids bdod 0-5 cm: soilgrids_bdod_0-5cm_3600.tif, 0.34..1.66, 18019 1-degree cells
+- 2026-11-14 23:21 earth SoilGrids cfvo 0-5 cm: soilgrids_cfvo_0-5cm_3600.tif, 0.26..39.22, 18069 1-degree cells
+- 2026-11-15 00:04 mars gases: pp_co2 nan..nan Pa, ozone nan DU max, dust tau nan mean
+- 2026-11-15 00:04 earth gases: TO3 3213 POWER points, 249..270
+- 2026-11-15 00:04 earth gases: AOD_55 900 POWER points, 0..0
+- 2026-11-15 00:20 mars gases: pp_co2 231..1067 Pa, ozone nan DU max, dust tau nan mean
+- 2026-11-15 00:21 earth gases: TO3 98668 POWER points, 242..382
+- 2026-11-15 00:21 earth gases: AOD_55 30500 POWER points, 0..1.05
+- 2026-11-15 00:23 earth gases: POWER TO3/AOD_55 boxes downloaded 160, failed 0
+- 2026-11-15 00:23 earth gases: POWER TO3/AOD_55 boxes downloaded 160, failed 0
+- 2026-11-15 00:24 earth gases: POWER TO3/AOD_55 boxes downloaded 160, failed 0
